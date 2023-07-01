@@ -344,6 +344,12 @@ type Entity struct {
 }
 ```
 
+## 📦 3rd-party Packages
+
+List of 3rd-party packages based on `PG`.
+
+* Iris Web Framework PostgreSQL Database Middleware: <https://github.com/iris-contrib/middleware/tree/master/pg>
+
 ## 🛡 Security Vulnerabilities
 
 If you discover a security vulnerability within pg, please send an e-mail to [kataras2006@hotmail.com](mailto:kataras2006@hotmail.com). All security vulnerabilities will be promptly addressed.
