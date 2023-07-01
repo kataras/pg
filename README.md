@@ -2,7 +2,7 @@
 
 [![build status](https://img.shields.io/github/actions/workflow/status/kataras/pg/ci.yml?branch=main&style=for-the-badge)](https://github.com/kataras/pg/actions/workflows/ci.yml)  [![report card](https://img.shields.io/badge/report%20card-a%2B-ff3333.svg?style=for-the-badge)](https://goreportcard.com/report/github.com/kataras/pg) [![godocs](https://img.shields.io/badge/go-%20docs-488AC7.svg?style=for-the-badge)](https://pkg.go.dev/github.com/kataras/pg/@main) [![view examples](https://img.shields.io/badge/examples%20-a83adf.svg?style=for-the-badge&logo=go)](https://github.com/kataras/pg/tree/main/_examples)
 
-<img align="left" src="./pg_logo.png">
+<img align="left" src="https://www.iris-go.com/images/pg_logo.png">
 
 A high-performance Go library that provides a simple and elegant way to interact with PostgreSQL databases. It allows you to define your entities as structs with pg tags, register them in a schema, and perform CRUD operations using a repository pattern. It also handles database connection, schema creation and verification, and query generation and execution. You can use PG to write concise and readable code that works with PostgreSQL databases.
 
