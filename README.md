@@ -1,6 +1,6 @@
 # kataras/pg
 
-[![build status](https://img.shields.io/github/actions/workflow/status/kataras/pg/ci.yml?branch=main&style=for-the-badge)](https://github.com/kataras/pg/actions/workflows/ci.yml)  [![report card](https://img.shields.io/badge/report%20card-a%2B-ff3333.svg?style=for-the-badge)](https://goreportcard.com/report/github.com/kataras/pg) [![godocs](https://img.shields.io/badge/go-%20docs-488AC7.svg?style=for-the-badge)](https://pkg.go.dev/github.com/kataras/pg@vlatest) [![view examples](https://img.shields.io/badge/examples%20-a83adf.svg?style=for-the-badge&logo=go)](https://github.com/kataras/pg/tree/main/_examples)
+[![build status](https://img.shields.io/github/actions/workflow/status/kataras/pg/ci.yml?branch=main&style=for-the-badge)](https://github.com/kataras/pg/actions/workflows/ci.yml)  [![report card](https://img.shields.io/badge/report%20card-a%2B-ff3333.svg?style=for-the-badge)](https://goreportcard.com/report/github.com/kataras/pg) [![godocs](https://img.shields.io/badge/go-%20docs-488AC7.svg?style=for-the-badge)](https://pkg.go.dev/github.com/kataras/pg/@main) [![view examples](https://img.shields.io/badge/examples%20-a83adf.svg?style=for-the-badge&logo=go)](https://github.com/kataras/pg/tree/main/_examples)
 
 <img align="left" src="./pg_logo.png">
 
