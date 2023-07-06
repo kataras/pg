@@ -14,8 +14,20 @@ func BuildUpdateQuery(value any, columnsToUpdate []string, primaryKey *Column) (
 		return "", nil, err
 	}
 
+	shouldUpdateID := false
+	for _, col := range columnsToUpdate {
+		if col == primaryKey.Name {
+			shouldUpdateID = true
+			break
+		}
+	}
+
+	if len(args) == 1 { // the last one is the id.
+		return "", nil, fmt.Errorf("no arguments found for update, maybe missing struct field tag of \"%s\"", DefaultTag)
+	}
+
 	// build the SQL query using the table definition and its primary key.
-	query := buildUpdateQuery(primaryKey.Table, args, primaryKey.Name)
+	query := buildUpdateQuery(primaryKey.Table, args, primaryKey.Name, shouldUpdateID)
 	return query, args.Values(), nil
 }
 
@@ -61,7 +73,7 @@ func extractUpdateArguments(value any, columnsToUpdate []string, primaryKey *Col
 	return args, nil
 }
 
-func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string) string {
+func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUpdateID bool) string {
 	var b strings.Builder
 
 	b.WriteString(`UPDATE "` + td.Name + `" SET `)
@@ -70,6 +82,12 @@ func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string) string {
 
 	for i, a := range args {
 		c := a.Column
+
+		if !shouldUpdateID && c.Name == primaryKeyName {
+			// Do not update ID if not specifically asked to.
+			// Fixes #1.
+			continue
+		}
 
 		if i > 0 {
 			b.WriteByte(',')

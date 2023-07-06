@@ -225,6 +225,11 @@ func (db *DB) CheckSchema(ctx context.Context) error {
 				return fmt.Errorf("column %q in table %q not found in schema", col.Name, tableName)
 			}
 
+			if column.Unique { // modify it, so checks are correct.
+				column.UniqueIndex = fmt.Sprintf("%s_%s_key", tableName, column.Name)
+				column.Unique = false
+			}
+
 			if expected, got := col.FieldTagString(false), column.FieldTagString(false); expected != got {
 				return fmt.Errorf("column %q in table %q has wrong field tag: db:\n%s\nvs code:\n%s", col.Name, tableName, expected, got)
 			}
