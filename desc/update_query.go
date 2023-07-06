@@ -108,7 +108,11 @@ func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUp
 		b.WriteString(fmt.Sprintf("%s = %s", c.Name, paramName))
 	}
 
-	b.WriteString(` WHERE "` + primaryKeyName + `" = $` + strconv.Itoa(paramIndex+1))
+	primaryKeyWhereIndex := paramIndex + 1
+	if shouldUpdateID { // if updating ID, then the last argument is the ID.
+		primaryKeyWhereIndex = paramIndex
+	}
+	b.WriteString(` WHERE "` + primaryKeyName + `" = $` + strconv.Itoa(primaryKeyWhereIndex))
 
 	b.WriteByte(';')
 
