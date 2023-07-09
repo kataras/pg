@@ -127,19 +127,25 @@ func (db *DB) createTableForeignKeysDump(_ context.Context, b *strings.Builder, 
 
 // createFunctionsAndTriggers creates the functions and triggers for the database schema.
 func (db *DB) createFunctionsAndTriggersDump(ctx context.Context, b *strings.Builder) error {
-	const (
-		createSetTimestampFunctionQuery = `CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+	if db.schema.SetTimestampTriggerName == "" || db.schema.UpdatedAtColumnName == "" {
+		// Do not register triggers if the end-developer disabled this feature by
+		// setting these fields to empty.
+		return nil
+	}
+
+	var (
+		createSetTimestampFunctionQuery = fmt.Sprintf(`CREATE OR REPLACE FUNCTION trigger_%s()
 		RETURNS TRIGGER AS $$
 		BEGIN
-		NEW.updated_at = NOW();
+		NEW.%s = NOW();
 		RETURN NEW;
 		END;
-		$$ LANGUAGE plpgsql;`
+		$$ LANGUAGE plpgsql;`, db.schema.SetTimestampTriggerName, db.schema.UpdatedAtColumnName)
 
-		createSetTimestampTriggerQuery = `CREATE TRIGGER set_timestamp
+		createSetTimestampTriggerQueryTmpl = `CREATE TRIGGER %s
 		BEFORE UPDATE ON %s
 		FOR EACH ROW
-		EXECUTE PROCEDURE trigger_set_timestamp();`
+		EXECUTE PROCEDURE trigger_%s();`
 	)
 
 	var (
@@ -162,7 +168,7 @@ tablesLoop:
 		var setTimestampTriggerCreated bool
 
 		for _, trigger := range triggers {
-			if trigger.Name == "set_timestamp" && trigger.TableName == td.Name {
+			if trigger.Name == db.schema.SetTimestampTriggerName && trigger.TableName == td.Name {
 				setTimestampTriggerCreated = true
 				continue tablesLoop
 			}
@@ -170,14 +176,14 @@ tablesLoop:
 
 		for _, column := range td.Columns {
 			if !setTimestampTriggerCreated {
-				if column.Name == "updated_at" && column.Type == desc.Timestamp {
+				if column.Name == db.schema.UpdatedAtColumnName && column.Type == desc.Timestamp {
 					if !setTimestampFunctionCreated { // global function.
 						b.WriteString(createSetTimestampFunctionQuery)
 						setTimestampFunctionCreated = true
 					}
 
 					// Create the trigger for each table.
-					query := fmt.Sprintf(createSetTimestampTriggerQuery, td.Name)
+					query := fmt.Sprintf(createSetTimestampTriggerQueryTmpl, db.schema.SetTimestampTriggerName, td.Name, db.schema.SetTimestampTriggerName)
 					b.WriteString(query)
 
 					setTimestampTriggerCreated = true

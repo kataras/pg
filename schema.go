@@ -15,11 +15,27 @@ type Schema struct {
 	structCache map[reflect.Type]*desc.Table
 
 	passwordHandler *desc.PasswordHandler // cache for tables.
+	// The name of the "updated_at" column. Defaults to "updated_at" but it can be modified,
+	// this is useful to set when triggers should be registered automatically.
+	//
+	// If set to empty then triggers will not be registered automatically.
+	UpdatedAtColumnName string
+	// Set the name of the trigger that sets the "updated_at" column, defaults to "set_timestamp".
+	//
+	// If set to empty then triggers will not be registered automatically.
+	SetTimestampTriggerName string
 }
 
 // NewSchema creates and returns a new Schema with an initialized struct cache.
 func NewSchema() *Schema {
-	return &Schema{structCache: make(map[reflect.Type]*desc.Table)} // make a map from reflect.Type to Table
+	return &Schema{
+		// make a map from reflect.Type to Table.
+		structCache: make(map[reflect.Type]*desc.Table),
+		// set the default name for the "updated_at" column.
+		UpdatedAtColumnName: "updated_at",
+		// set the default name for the trigger that sets the "updated_at" column.
+		SetTimestampTriggerName: "set_timestamp",
+	}
 }
 
 /*
