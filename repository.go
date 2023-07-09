@@ -234,6 +234,13 @@ func (repo *Repository[T]) Update(ctx context.Context, values ...T) (int64, erro
 	return repo.UpdateOnlyColumns(ctx, nil, values...)
 }
 
+// UpdateExceptColumns updates one or more values of type T in the database by their primary key values.
+// The columnsToExcept parameter can be used to specify which columns should NOT be updated.
+func (repo *Repository[T]) UpdateExceptColumns(ctx context.Context, columnsToExcept []string, values ...T) (int64, error) {
+	columnsToUpdate := repo.td.ListColumnNamesExcept(columnsToExcept...)
+	return repo.UpdateOnlyColumns(ctx, columnsToUpdate, values...)
+}
+
 // UpdateOnlyColumns updates one or more values of type T in the database by their primary key values.
 //
 // The columnsToUpdate parameter can be used to specify which columns should be updated.

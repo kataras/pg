@@ -252,6 +252,24 @@ func (db *DB) Update(ctx context.Context, values ...any) (int64, error) {
 	return db.UpdateOnlyColumns(ctx, nil, values...)
 }
 
+// UpdateExceptColumns updates one or more values in the database by building and executing an
+// SQL query based on the values and the table definition.
+//
+// The columnsToExcept parameter can be used to specify which columns should NOT be updated.
+func (db *DB) UpdateExceptColumns(ctx context.Context, columnsToExcept []string, values ...any) (int64, error) {
+	if len(values) == 0 { // return false and nil if no values are given
+		return 0, nil
+	}
+
+	td, err := db.schema.Get(desc.IndirectType(reflect.TypeOf(values[0])))
+	if err != nil {
+		return 0, err
+	}
+
+	columnsToUpdate := td.ListColumnNamesExcept(columnsToExcept...)
+	return db.updateTableRecords(ctx, td, columnsToUpdate, values)
+}
+
 // UpdateOnlyColumns updates one or more values in the database by building and executing an
 // SQL query based on the values and the table definition.
 //

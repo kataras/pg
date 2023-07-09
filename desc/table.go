@@ -117,6 +117,30 @@ func (td *Table) ListColumnNames() []string {
 	return names
 }
 
+// ListColumnNamesExcept returns the column names of the table definition except the given ones.
+func (td *Table) ListColumnNamesExcept(except ...string) []string {
+	if len(except) == 0 {
+		return td.ListColumnNames()
+	}
+
+	names := make([]string, 0, len(td.Columns))
+	for _, c := range td.Columns {
+		pass := true
+		for _, exceptedColumn := range except {
+			if c.Name == exceptedColumn {
+				pass = false
+				break
+			}
+		}
+
+		if pass {
+			names = append(names, c.Name)
+		}
+	}
+
+	return names
+}
+
 // GetColumnByName returns the column definition with the given name,
 // or nil if no such column exists in the table definition.
 // The name comparison is case-insensitive.
