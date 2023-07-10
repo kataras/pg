@@ -1,6 +1,7 @@
 package desc
 
 import (
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -10,19 +11,11 @@ import (
 var (
 	// ToStructName returns the struct name for the table name.
 	// TODO: It can go to a NewTable function.
-	ToStructName = func(tableName string) string {
-		return PascalCase(Singular(tableName))
-	}
-
+	ToStructName = func(tableName string) string { return PascalCase(Singular(tableName)) }
 	// ToStructFieldName returns the struct field name for the column name.
-	ToStructFieldName = func(columnName string) string {
-		return PascalCase(columnName)
-	}
-
-	// ToColumnName returns the column name for the field name.
-	ToColumnName = func(fieldName string) string {
-		return SnakeCase(fieldName)
-	}
+	ToStructFieldName = func(columnName string) string { return PascalCase(columnName) }
+	// ToColumnName returns the column name for the struct field.
+	ToColumnName = func(field reflect.StructField) string { return SnakeCase(field.Name) }
 )
 
 var p = pluralize.NewClient()

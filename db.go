@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/kataras/pg/desc"
@@ -24,17 +25,36 @@ func SetDefaultSearchPath(searchPath string) {
 	desc.DefaultSearchPath = searchPath
 }
 
-// SetKeepColumnName sets the default column name conversion function.
-// If true then the column name will not be converted to snake_case.
-//
-// Further modifications can be done by setting the `desc.ToColumnName` package-level variable function.
-//
-// Defaults to snake_case.
-func SetKeepColumnName(b bool) {
-	if b {
-		desc.ToColumnName = func(fieldName string) string { return fieldName }
+var (
+	// DefaultColumnNameMapper is the default column name conversion function.
+	// It converts the struct field name to snake_case.
+	//
+	// Further modifications can be calling the `SetDefaultColumnNameMapper` package-level function.
+	defaultColumnNameMapper = func(field reflect.StructField) string { return desc.SnakeCase(field.Name) }
+	// NoColumnNameMapper is a column name conversion function.
+	// It converts the column name to the same as its struct field name.
+	NoColumnNameMapper = func(field reflect.StructField) string { return field.Name }
+	// JSONColumnNameMapper is a column name conversion function.
+	// It converts the column name to the same as its json tag name
+	// and fallbacks to field name (if json tag is missing or "-").
+	JSONColumnNameMapper = func(field reflect.StructField) string {
+		jsonTag := field.Tag.Get("json")
+		if jsonTag == "-" {
+			return field.Name // fallbacks to field name.
+		}
+
+		return strings.SplitN(jsonTag, ",", 2)[0]
+	}
+)
+
+// SetDefaultColumnNameMapper sets the default column name conversion function.
+// This is used when the "name" pg tag option is missing for one or more struct fields.
+// Set to nil function to use the default column name conversion function.
+func SetDefaultColumnNameMapper(fn func(field reflect.StructField) string) {
+	if fn == nil {
+		desc.ToColumnName = defaultColumnNameMapper
 	} else {
-		desc.ToColumnName = desc.SnakeCase
+		desc.ToColumnName = fn
 	}
 }
 

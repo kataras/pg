@@ -25,6 +25,33 @@ func (args Arguments) Values() []any {
 	return values // return the slice of values
 }
 
+// ShiftEnd moves the argument with the given column name to the end of the slice.
+func (args *Arguments) ShiftEnd(arg Argument) {
+	for i, a := range *args {
+		if a.Column.Name == arg.Column.Name { // already exists, move to the end and return.
+			*args = shiftToEndEnd(*args, i)
+			return
+		}
+	}
+
+	*args = append(*args, arg) // append the argument to the end of the slice.
+}
+
+func shiftToEndEnd[T any](s []T, x int) []T {
+	if x < 0 {
+		return s
+	}
+
+	if x >= len(s)-1 {
+		return s
+	}
+
+	tmp := s[x]
+	s = append(s[:x], s[x+1:]...)
+	s = append(s, tmp)
+	return s
+}
+
 // extractArguments takes a reflect value of a struct and a table definition
 // and returns a slice of arguments for each column in the table that is not auto-generated or has a default value.
 func extractArguments(td *Table, structValue reflect.Value) (Arguments, error) {

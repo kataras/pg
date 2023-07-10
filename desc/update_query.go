@@ -64,8 +64,10 @@ func extractUpdateArguments(value any, columnsToUpdate []string, primaryKey *Col
 		return nil, fmt.Errorf(`no arguments found for update, maybe missing struct field tag of "%s"`, DefaultTag)
 	}
 
-	// add the primary key value as the last argument
-	args = append(args, Argument{
+	// Add (or move) the primary key value as the last argument,
+	// move is a requiremend here in order to remove a duplicated primary key name in the query;
+	// this can happen if the specified column names to update do not match the database schema.
+	args.ShiftEnd(Argument{
 		Column: primaryKey,
 		Value:  id,
 	})
