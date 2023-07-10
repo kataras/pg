@@ -24,6 +24,20 @@ func SetDefaultSearchPath(searchPath string) {
 	desc.DefaultSearchPath = searchPath
 }
 
+// SetKeepColumnName sets the default column name conversion function.
+// If true then the column name will not be converted to snake_case.
+//
+// Further modifications can be done by setting the `desc.ToColumnName` package-level variable function.
+//
+// Defaults to snake_case.
+func SetKeepColumnName(b bool) {
+	if b {
+		desc.ToColumnName = func(fieldName string) string { return fieldName }
+	} else {
+		desc.ToColumnName = desc.SnakeCase
+	}
+}
+
 type (
 	// Row is a type alias for pgx.Row.
 	Row = pgx.Row

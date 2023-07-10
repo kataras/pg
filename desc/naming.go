@@ -7,11 +7,23 @@ import (
 	"github.com/gertd/go-pluralize"
 )
 
-// ToStructName returns the struct name for the table name.
-// TODO: It can go to a NewTable function.
-func ToStructName(tableName string) string {
-	return PascalCase(Singular(tableName))
-}
+var (
+	// ToStructName returns the struct name for the table name.
+	// TODO: It can go to a NewTable function.
+	ToStructName = func(tableName string) string {
+		return PascalCase(Singular(tableName))
+	}
+
+	// ToStructFieldName returns the struct field name for the column name.
+	ToStructFieldName = func(columnName string) string {
+		return PascalCase(columnName)
+	}
+
+	// ToColumnName returns the column name for the field name.
+	ToColumnName = func(fieldName string) string {
+		return SnakeCase(fieldName)
+	}
+)
 
 var p = pluralize.NewClient()
 

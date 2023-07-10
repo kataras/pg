@@ -57,7 +57,7 @@ const (
 func convertStructFieldToColumnDefinion(tableName string, field reflect.StructField) (*Column, error) {
 	c := &Column{
 		TableName:  tableName,
-		Name:       SnakeCase(field.Name),
+		Name:       ToColumnName(field.Name),
 		Type:       goTypeToDataType(field.Type),
 		FieldIndex: field.Index,
 		FieldType:  field.Type,
