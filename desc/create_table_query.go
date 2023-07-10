@@ -2,6 +2,7 @@ package desc
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -20,7 +21,7 @@ func BuildCreateTableQuery(td *Table) string {
 		}
 
 		// Add the column name and type
-		query.WriteString(col.Name + " " + col.Type.String())
+		query.WriteString(strconv.Quote(col.Name) + " " + col.Type.String())
 
 		// Add the type argument if any
 		if col.TypeArgument != "" {
@@ -53,7 +54,7 @@ func BuildCreateTableQuery(td *Table) string {
 
 	// Add the primary key constraint if any
 	if primaryKey, ok := td.PrimaryKey(); ok {
-		query.WriteString(fmt.Sprintf(", PRIMARY KEY (%s)", primaryKey.Name))
+		query.WriteString(fmt.Sprintf(`, PRIMARY KEY ("%s")`, primaryKey.Name))
 	}
 
 	// Loop over the foreign key constraints and append them to the query
@@ -75,6 +76,9 @@ func BuildCreateTableQuery(td *Table) string {
 	//
 	// Read more at: https://stackoverflow.com/questions/23542794/postgres-unique-constraint-vs-index
 	for idxName, colNames := range td.UniqueIndexes() {
+		for i := range colNames {
+			colNames[i] = strconv.Quote(colNames[i]) // quote column names.
+		}
 		query.WriteString(fmt.Sprintf(", CONSTRAINT %s UNIQUE (%s)", idxName, strings.Join(colNames, ", ")))
 	}
 
@@ -84,7 +88,8 @@ func BuildCreateTableQuery(td *Table) string {
 	// Loop over the non-unique indexes and append them to the query as separate statements
 	for _, idx := range td.Indexes() {
 		// Use the CREATE INDEX statement with the index name, table name, type and column name
-		query.WriteString(fmt.Sprintf("CREATE INDEX IF NOT EXISTS %s ON %s USING %s (%s);", idx.Name, td.Name, idx.Type.String(), idx.ColumnName))
+		query.WriteString(fmt.Sprintf(`CREATE INDEX IF NOT EXISTS %s ON %s USING %s ("%s");`,
+			idx.Name, td.Name, idx.Type.String(), idx.ColumnName))
 	}
 
 	return query.String()
