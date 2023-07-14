@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/gertd/go-pluralize v0.2.1
-	github.com/jackc/pgx/v5 v5.4.1
-	golang.org/x/mod v0.11.0
+	github.com/jackc/pgx/v5 v5.4.2
+	golang.org/x/mod v0.8.0
 )
 
 require (
