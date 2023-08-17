@@ -82,12 +82,9 @@ func notifyNative[T string | []byte](ctx context.Context, db *DB, channel string
 func UnmarshalNotification[T any](n *Notification) (T, error) {
 	var payload T
 
-	b, err := stringToBytes(n.Payload)
-	if err != nil {
-		return payload, err
-	}
+	b := stringToBytes(n.Payload)
 
-	err = json.Unmarshal(b, &payload)
+	err := json.Unmarshal(b, &payload)
 	if err != nil {
 		return payload, err
 	}
