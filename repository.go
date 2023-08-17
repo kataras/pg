@@ -252,7 +252,7 @@ func (repo *Repository[T]) UpdateOnlyColumns(ctx context.Context, columnsToUpdat
 	if len(values) == 0 {
 		return 0, nil
 	}
-	
+
 	valuesAsInterfaces := toInterfaces(values)
 	return repo.db.updateTableRecords(ctx, repo.td, columnsToUpdate, valuesAsInterfaces)
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"unsafe"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -96,12 +95,6 @@ func UnmarshalNotification[T any](n *Notification) (T, error) {
 	return payload, nil
 }
 
-// based on: https://groups.google.com/g/golang-nuts/c/Zsfk-VMd_fU/m/O1ru4fO-BgAJ.
-func stringToBytes(s string) ([]byte, error) {
-	const max = 0x7fff0000
-	if len(s) > max {
-		return nil, fmt.Errorf("string too long")
-	}
-
-	return (*[max]byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data))[:len(s):len(s)], nil
+func stringToBytes(s string) []byte {
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
