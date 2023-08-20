@@ -229,6 +229,15 @@ func (repo *Repository[T]) Delete(ctx context.Context, values ...T) (int64, erro
 	return repo.db.deleteTableRecords(ctx, repo.td, valuesAsInterfaces)
 }
 
+// DeleteByID deletes a single row from a table by matching the id column with the given argument and
+// reports whether the entry was removed or not.
+//
+// The difference between Delete and DeleteByID is that
+// DeleteByID accepts just the id value instead of the whole entity structure value.
+func (repo *Repository[T]) DeleteByID(ctx context.Context, id any) (bool, error) {
+	return repo.db.deleteByID(ctx, repo.td, id)
+}
+
 // Update updates one or more values of type T in the database by their primary key values.
 func (repo *Repository[T]) Update(ctx context.Context, values ...T) (int64, error) {
 	return repo.UpdateOnlyColumns(ctx, nil, values...)

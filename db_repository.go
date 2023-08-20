@@ -246,6 +246,21 @@ func (db *DB) deleteTableRecords(ctx context.Context, td *desc.Table, values []a
 	return tag.RowsAffected(), nil // return true and nil if at least one row was affected by the query
 }
 
+func (db *DB) deleteByID(ctx context.Context, td *desc.Table, id any) (bool, error) {
+	primaryKey, ok := td.PrimaryKey()
+	if !ok {
+		return false, fmt.Errorf("no primary key found in table definition: %s", td.Name)
+	}
+
+	query := fmt.Sprintf(`DELETE FROM "%s"."%s" WHERE "%s" = $1;`, db.searchPath, td.Name, primaryKey.Name)
+	tag, err := db.Exec(ctx, query, id)
+	if err != nil {
+		return false, err
+	}
+
+	return tag.RowsAffected() > 0, nil
+}
+
 // Update updates one or more values in the database by building and executing an
 // SQL query based on the values and the table definition.
 func (db *DB) Update(ctx context.Context, values ...any) (int64, error) {
