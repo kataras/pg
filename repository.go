@@ -40,6 +40,12 @@ func (repo *Repository[T]) DB() *DB {
 	return repo.db // return the db field
 }
 
+// Table returns the Table definition instance associated with the Repository instance.
+// It should NOT be modified by the caller.
+func (repo *Repository[T]) Table() *desc.Table {
+	return repo.td
+}
+
 // QueryRow executes a query that returns at most one row and returns it as a Row instance.
 func (repo *Repository[T]) QueryRow(ctx context.Context, query string, args ...any) Row {
 	return repo.db.QueryRow(ctx, query, args...)

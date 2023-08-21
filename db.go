@@ -204,8 +204,15 @@ func (db *DB) clone(tx pgx.Tx) *DB {
 	return clone
 }
 
+// SearchPath returns the search path of the database.
 func (db *DB) SearchPath() string {
 	return db.searchPath
+}
+
+// Schema returns the Schema instance of the database.
+// It should NOT be modified by the caller.
+func (db *DB) Schema() *Schema {
+	return db.schema
 }
 
 // ErrIntentionalRollback is an error that can be returned by a transaction function to rollback the transaction.
