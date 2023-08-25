@@ -19,6 +19,7 @@ func ConvertStructToTable(tableName string, typ reflect.Type) (*Table, error) {
 		SearchPath: DefaultSearchPath, // use the default search path
 		Name:       tableName,         // use the given table name
 		StructName: typ.Name(),        // use the name of the struct type
+		StructType: typ,
 	}
 
 	// Retrieve only fields valid for postgres.

@@ -375,6 +375,7 @@ func (db *DB) ListTables(ctx context.Context, opts ListTablesOptions) ([]*desc.T
 		table := &desc.Table{
 			RegisteredPosition: i,
 			StructName:         desc.ToStructName(tableName),
+			StructType:         nil,
 			SearchPath:         db.searchPath,
 			Name:               tableName,
 			Description:        tableDescriptionsOrdered[i],

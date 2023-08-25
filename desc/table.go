@@ -57,12 +57,13 @@ type Table struct {
 	RegisteredPosition int // the position of the table in the schema
 	Type               TableType
 
-	StructName  string    // the name of the struct that represents the table
-	SearchPath  string    // the search path for the table
-	Name        string    // the name of the table
-	Description string    // the description of the table
-	Strict      bool      // if true then the select queries will return an error if a column is missing from the struct's fields
-	Columns     []*Column // a slice of pointers to Column that represents the columns of the table
+	StructName  string       // the name of the struct that represents the table
+	StructType  reflect.Type `json:"-"` // the type of the struct that represents the table
+	SearchPath  string       // the search path for the table
+	Name        string       // the name of the table
+	Description string       // the description of the table
+	Strict      bool         // if true then the select queries will return an error if a column is missing from the struct's fields
+	Columns     []*Column    // a slice of pointers to Column that represents the columns of the table
 
 	PasswordHandler *PasswordHandler
 }
