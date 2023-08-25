@@ -224,6 +224,10 @@ func (db *DB) CheckSchema(ctx context.Context) error {
 			return err // this should never happen as we get the table names from the schema.
 		}
 
+		if td.Description == "" {
+			td.Description = table.Description
+		}
+
 		for _, col := range table.Columns {
 			column := td.GetColumnByName(col.Name)
 
@@ -238,6 +242,10 @@ func (db *DB) CheckSchema(ctx context.Context) error {
 
 			if expected, got := col.FieldTagString(false), column.FieldTagString(false); expected != got {
 				return fmt.Errorf("column %q in table %q has wrong field tag: db:\n%s\nvs code:\n%s", col.Name, tableName, expected, got)
+			}
+
+			if column.Description == "" {
+				column.Description = col.Description
 			}
 		}
 	}
