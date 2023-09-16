@@ -12,7 +12,8 @@ import (
 type Schema struct {
 	// structCache is a map from reflect.Type to Table
 	// that stores the table definitions for the registered structs
-	structCache map[reflect.Type]*desc.Table
+	structCache  map[reflect.Type]*desc.Table
+	orderedTypes []reflect.Type
 
 	passwordHandler *desc.PasswordHandler // cache for tables.
 	// The name of the "updated_at" column. Defaults to "updated_at" but it can be modified,
@@ -125,8 +126,18 @@ func (s *Schema) Register(tableName string, emptyStructValue any, opts ...TableF
 	}
 
 	s.structCache[typ] = td // store the table definition in the cache with the type as the key
+	s.orderedTypes = append(s.orderedTypes, typ)
 
 	return td, nil // return the table definition and no error
+}
+
+// Last returns the last registered table definition.
+func (s *Schema) Last() *desc.Table {
+	if len(s.orderedTypes) == 0 {
+		return nil
+	}
+
+	return s.structCache[s.orderedTypes[len(s.orderedTypes)-1]]
 }
 
 // Get takes a reflect.Type that represents a struct type
