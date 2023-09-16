@@ -51,6 +51,11 @@ func (repo *Repository[T]) QueryRow(ctx context.Context, query string, args ...a
 	return repo.db.QueryRow(ctx, query, args...)
 }
 
+// QueryBoolean executes a query that returns a single boolean value and returns it as a bool and an error.
+func (repo *Repository[T]) QueryBoolean(ctx context.Context, query string, args ...any) (bool, error) {
+	return repo.db.QueryBoolean(ctx, query, args...)
+}
+
 // Query executes a query that returns multiple rows and returns them as a Rows instance and an error.
 func (repo *Repository[T]) Query(ctx context.Context, query string, args ...any) (Rows, error) {
 	return repo.db.Query(ctx, query, args...)
@@ -181,6 +186,9 @@ func (repo *Repository[T]) InsertSingle(ctx context.Context, value T, idPtr any)
 
 	return repo.db.insertTableRecord(ctx, repo.td, desc.IndirectValue(value), idPtr, "", false) // delegate the insertion to repo.db.insertTableRecord and return its result
 }
+
+// DoNothing is a constant that can be used as the forceOnConflictExpr argument of Upsert/UpsertSingle to do nothing on conflict.
+const DoNothing = "DO NOTHING"
 
 // Upsert inserts or updates one or more values of type T into the database.
 func (repo *Repository[T]) Upsert(ctx context.Context, forceOnConflictExpr string, values ...T) error {

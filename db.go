@@ -364,6 +364,12 @@ func (db *DB) QueryRow(ctx context.Context, query string, args ...any) Row {
 	return db.Pool.QueryRow(ctx, query, args...)
 }
 
+// QueryBoolean executes a query that returns a single boolean value and returns it as a bool and an error.
+func (db *DB) QueryBoolean(ctx context.Context, query string, args ...any) (ok bool, err error) {
+	err = db.QueryRow(ctx, query, args...).Scan(&ok)
+	return
+}
+
 // Exec executes SQL. The query can be either a prepared statement name or an SQL string.
 // Arguments should be referenced positionally from the sql "query" string as $1, $2, etc.
 func (db *DB) Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {

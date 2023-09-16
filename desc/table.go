@@ -223,7 +223,7 @@ func (td *Table) ForeignKeyColumnNames() []string {
 
 // PrimaryKey returns the primary key's column of the
 // row definition and reports if there is one.
-func (td *Table) PrimaryKey() (*Column, bool) {
+func (td *Table) PrimaryKey() (*Column, bool) { // TODO: think of making it a static variable but keep the function somehow.
 	for _, c := range td.Columns {
 		if c.PrimaryKey {
 			return c, true
