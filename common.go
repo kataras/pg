@@ -9,6 +9,7 @@ import (
 // that the type of T should be a database scannabled type (e.g. string, int, time.Time, etc.).
 //
 // The ErrNoRows is discarded, an empty list and a nil error will be returned instead.
+// If a string column is empty then it's skipped from the returning list.
 // Example:
 //
 //	names, err := QuerySlice[string](ctx, db, "SELECT name FROM users;")
@@ -19,12 +20,21 @@ func QuerySlice[T any](ctx context.Context, db *DB, query string, args ...any) (
 	}
 	defer rows.Close()
 
+	var t T
+	_, isString := any(t).(string)
+
 	var list []T
 
 	for rows.Next() {
 		var entry T
 		if err = rows.Scan(&entry); err != nil {
 			return nil, err
+		}
+
+		if isString {
+			if any(entry).(string) == "" {
+				continue
+			}
 		}
 
 		list = append(list, entry)
