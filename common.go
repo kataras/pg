@@ -8,6 +8,7 @@ import (
 // Note that the rows scanner will directly scan an element of T, meaning
 // that the type of T should be a database scannabled type (e.g. string, int, time.Time, etc.).
 //
+// The ErrNoRows is discarded, an empty list and a nil error will be returned instead.
 // Example:
 //
 //	names, err := QuerySlice[string](ctx, db, "SELECT name FROM users;")
@@ -29,7 +30,11 @@ func QuerySlice[T any](ctx context.Context, db *DB, query string, args ...any) (
 		list = append(list, entry)
 	}
 
-	return list, rows.Err()
+	if err = rows.Err(); err != nil && err != ErrNoRows {
+		return nil, err
+	}
+
+	return list, nil
 }
 
 // QuerySingle executes the given query and returns a single T entry.
