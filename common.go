@@ -37,6 +37,39 @@ func QuerySlice[T any](ctx context.Context, db *DB, query string, args ...any) (
 	return list, nil
 }
 
+// QueryTwoSlices executes the given query and returns two lists of T and V entries.
+// Same behavior as QuerySlice but with two lists.
+func QueryTwoSlices[T, V any](ctx context.Context, db *DB, query string, args ...any) ([]T, []V, error) {
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	var (
+		tList []T
+		vList []V
+	)
+	for rows.Next() {
+		var (
+			t T
+			v V
+		)
+		if err = rows.Scan(&t, v); err != nil {
+			return nil, nil, err
+		}
+
+		tList = append(tList, t)
+		vList = append(vList, v)
+	}
+
+	if err = rows.Err(); err != nil && err != ErrNoRows {
+		return nil, nil, err
+	}
+
+	return tList, vList, nil
+}
+
 // QuerySingle executes the given query and returns a single T entry.
 //
 // Example:
