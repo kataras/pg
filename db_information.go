@@ -216,6 +216,8 @@ func (db *DB) CheckSchema(ctx context.Context) error {
 		return fmt.Errorf("expected %d tables, got %d", len(tableNames), len(tables))
 	}
 
+	// var fixQueries []string
+
 	for _, table := range tables {
 		tableName := table.Name
 
@@ -229,19 +231,25 @@ func (db *DB) CheckSchema(ctx context.Context) error {
 		}
 
 		for _, col := range table.Columns {
-			column := td.GetColumnByName(col.Name)
+			column := td.GetColumnByName(col.Name) // get code column.
 
 			if column == nil {
 				return fmt.Errorf("column %q in table %q not found in schema", col.Name, tableName)
 			}
 
-			if column.Unique { // modify it, so checks are correct.
-				column.UniqueIndex = fmt.Sprintf("%s_%s_key", tableName, column.Name)
-				column.Unique = false
-			}
+			// if column.Unique { // modify it, so checks are correct.
+			// 	column.UniqueIndex = fmt.Sprintf("%s_%s_key", tableName, column.Name)
+			// 	column.Unique = false
+			// }
 
-			if expected, got := col.FieldTagString(false), column.FieldTagString(false); expected != got {
+			if expected, got := strings.ToLower(col.FieldTagString(false)), strings.ToLower(column.FieldTagString(false)); expected != got {
+				// if strings.Contains(expected, "nullable") && !strings.Contains(got, "nullable") {
+				// 	// database has nullable, but code doesn't.
+				// 	fixQuery := fmt.Sprintf(`ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;`, tableName, col.Name)
+				// 	fixQueries = append(fixQueries, fixQuery)
+				// } else {
 				return fmt.Errorf("column %q in table %q has wrong field tag: db:\n%s\nvs code:\n%s", col.Name, tableName, expected, got)
+				//	}
 			}
 
 			if column.Description == "" {
@@ -249,6 +257,21 @@ func (db *DB) CheckSchema(ctx context.Context) error {
 			}
 		}
 	}
+
+	// Maybe a next feature but we must be very careful, skip it for now and ofc move it to a different developer-driven method:
+	// if len(fixQueries) > 0 {
+	// 	return db.InTransaction(ctx, func(db *DB) error {
+	// 		for _, fixQuery := range fixQueries {
+	// 			// fmt.Println(fixQuery)
+	// 			_, err = db.Exec(ctx, fixQuery)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 		}
+
+	// 		return nil
+	// 	})
+	// }
 
 	return nil // return nil if no mismatch is found
 }
@@ -424,6 +447,11 @@ func (db *DB) ListColumns(ctx context.Context, tableNames ...string) ([]*desc.Co
 		return nil, err
 	}
 
+	uniqueIndexes, err := db.ListUniqueIndexes(ctx, tableNames...)
+	if err != nil {
+		return nil, err
+	}
+
 	columns := make([]*desc.Column, 0, len(basicInfos))
 
 	for _, basicInfo := range basicInfos {
@@ -433,6 +461,18 @@ func (db *DB) ListColumns(ctx context.Context, tableNames ...string) ([]*desc.Co
 		for _, constraint := range constraints {
 			if constraint.TableName == column.TableName && constraint.ColumnName == column.Name {
 				constraint.BuildColumn(&column)
+			}
+		}
+
+	uniqueIndexLoop:
+		for _, uniqueIndex := range uniqueIndexes {
+			if uniqueIndex.TableName == column.TableName {
+				for _, columnName := range uniqueIndex.Columns {
+					if columnName == column.Name {
+						column.UniqueIndex = uniqueIndex.IndexName
+						break uniqueIndexLoop
+					}
+				}
 			}
 		}
 
@@ -494,19 +534,19 @@ FROM
 WHERE
     schemaname = $1 AND
     ( CARDINALITY($2::varchar[]) = 0 OR tablename = ANY($2::varchar[]) ) AND
-    indexdef NOT LIKE '%UNIQUE%'
+    indexdef NOT LIKE '%UNIQUE%' -- don't collect unique indexes here, they are (or should be) collected in the first part of the query OR by the ListUniqueIndexes.
 ORDER BY table_name, column_name;`
 
 	/*
 		table_name	column_name	constraint_name	constraint_type	constraint_definition	index_type
-		blog_posts		blog_posts_blog_id_fkey	i	CREATE INDEX blog_posts_blog_id_fkey ON public.blog_posts USING btree (blog_id)
+		blog_posts	blog_posts_blog_id_fkey	i	CREATE INDEX blog_posts_blog_id_fkey ON public.blog_posts USING btree (blog_id)
 		blog_posts	blog_id	blog_posts_blog_id_fkey	f	FOREIGN KEY (blog_id) REFERENCES blogs(id) ON DELETE CASCADE DEFERRABLE
 		blog_posts	id	blog_posts_pkey	p	PRIMARY KEY (id)	btree
 		blog_posts	read_time_minutes	blog_posts_read_time_minutes_check	c	CHECK ((read_time_minutes > 0))
 		blog_posts	source_url	uk_blog_post	u	UNIQUE (title, source_url)	btree
 		blog_posts	title	uk_blog_post	u	UNIQUE (title, source_url)	btree
 		blogs	id	blogs_pkey	p	PRIMARY KEY (id)	btree
-		customers		customers_name_idx	i	CREATE INDEX customers_name_idx ON public.customers USING btree (name)
+		customers	customers_name_idx	i	CREATE INDEX customers_name_idx ON public.customers USING btree (name)
 		customers	cognito_user_id	customer_unique_idx	u	UNIQUE (cognito_user_id, email)	btree
 		customers	email	customer_unique_idx	u	UNIQUE (cognito_user_id, email)	btree
 		customers	id	customers_pkey	p	PRIMARY KEY (id)	btree
@@ -518,6 +558,8 @@ ORDER BY table_name, column_name;`
 		return nil, err // return nil and the error if the query fails
 	}
 	defer rows.Close() // close the rows instance when done
+
+	// constraintNames := make(map[string]struct{})
 
 	cs := make([]*desc.Constraint, 0) // create an empty slice to store the constraint definitions
 	for rows.Next() {                 // loop over the rows returned by the query
@@ -537,9 +579,85 @@ ORDER BY table_name, column_name;`
 			return nil, err
 		}
 
+		// if _, exists := constraintNames[c.ConstraintName]; !exists {
+		//	constraintNames[c.ConstraintName] = struct{}{}
+
 		c.Build(constraintDefinition)
+		cs = append(cs, &c)
+		// }
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return cs, nil
+}
+
+// ListUniqueIndexes returns a list of unique indexes in the database schema by querying the pg_index table and
+// filtering the results to only include unique indexes.
+func (db *DB) ListUniqueIndexes(ctx context.Context, tableNames ...string) ([]*desc.UniqueIndex, error) {
+	if tableNames == nil {
+		tableNames = make([]string, 0)
+	}
+
+	query := `SELECT
+	-- n.nspname AS schema_name,
+	t.relname AS table_name,
+	i.relname AS index_name,
+	array_agg(a.attname ORDER BY a.attnum) AS index_columns
+  FROM pg_index p
+  JOIN pg_class t ON t.oid = p.indrelid -- the table
+  JOIN pg_class i ON i.oid = p.indexrelid -- the index
+  JOIN pg_namespace n ON n.oid = t.relnamespace -- the schema
+  JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(p.indkey) -- the columns
+  WHERE n.nspname = $1
+  AND ( CARDINALITY($2::varchar[]) = 0 OR t.relname = ANY($2::varchar[]) )
+  AND p.indisunique -- only unique indexes
+  AND NOT p.indisprimary -- not primary keys
+  AND NOT EXISTS ( -- not created by a constraint
+	SELECT 1 FROM pg_constraint c
+	WHERE c.conindid = p.indexrelid
+  )
+  GROUP BY n.nspname, t.relname, i.relname;`
+	/*
+		public	customer_allergies	customer_allergy	{customer_id,allergy_id}
+		public	customer_cheat_foods	customer_cheat_food	{customer_id,food_id}
+		public	customer_devices	customer_devices_unique	{customer_id,type}
+	*/
+
+	// Execute the query using db.Query and pass in the search path as a parameter
+	rows, err := db.Query(ctx, query, db.searchPath, tableNames)
+	if err != nil {
+		return nil, err // return nil and the error if the query fails
+	}
+	defer rows.Close() // close the rows instance when done
+
+	cs := make([]*desc.UniqueIndex, 0) // create an empty slice to store the unique index definitions
+
+	for rows.Next() { // loop over the rows returned by the query
+		var (
+			tableName string
+			indexName string
+			columns   []string
+		)
+
+		if err = rows.Scan(
+			&tableName,
+			&indexName,
+			&columns,
+		); err != nil {
+			return nil, err
+		}
+
+		c := desc.UniqueIndex{
+			TableName: tableName,
+			IndexName: indexName,
+			Columns:   columns,
+		}
 
 		cs = append(cs, &c)
+
 	}
 
 	if err = rows.Err(); err != nil {

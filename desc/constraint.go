@@ -125,12 +125,13 @@ func (c *Constraint) BuildColumn(column *Column) error {
 	case PrimaryKeyConstraintType:
 		column.PrimaryKey = true
 	case UniqueConstraintType:
-		if len(c.Unique.Columns) == 0 {
-			// simple unique to itself.
-			column.Unique = true
-		} else {
-			column.UniqueIndex = c.ConstraintName
-		}
+		// if len(c.Unique.Columns) == 0 {
+		// 	// simple unique to itself.
+		// 	column.Unique = true
+		// } else {
+		// 	column.UniqueIndex = c.ConstraintName
+		// }
+		column.Unique = true
 	case CheckConstraintType:
 		column.CheckConstraint = c.Check.Expression
 	case ForeignKeyConstraintType:
@@ -181,6 +182,22 @@ func parseUniqueConstraint(constraintDefinition string) *UniqueConstraint {
 	return &UniqueConstraint{
 		Columns: columns,
 	}
+}
+
+var uniqueIndexConstraintRegexp = regexp.MustCompile(`CREATE UNIQUE INDEX (?P<name>\w+) ON (?P<schema>\w+)\.(?P<table>\w+) USING (?P<method>\w+) \((?P<columns>.*)\)`)
+
+func parseUniqueIndexConstraint(constraintDefinition string) []string {
+	// Find the submatches in the sql string
+	matches := uniqueIndexConstraintRegexp.FindStringSubmatch(constraintDefinition)
+	// Get the names of the subexpressions
+	names := uniqueIndexConstraintRegexp.SubexpNames()
+	// Create a map to store the submatches by name
+	result := make(map[string]string)
+	for i, match := range matches {
+		result[names[i]] = match
+	}
+	// Return the column names as a slice
+	return strings.Split(result["columns"], ", ")
 }
 
 // CheckConstraint is a type that represents a check constraint.

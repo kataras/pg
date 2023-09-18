@@ -25,6 +25,10 @@ type Schema struct {
 	//
 	// If set to empty then triggers will not be registered automatically.
 	SetTimestampTriggerName string
+
+	// Strict reports whether the schema should be strict on the database side.
+	// It's enabled by default.
+	Strict bool
 }
 
 // NewSchema creates and returns a new Schema with an initialized struct cache.
@@ -36,6 +40,7 @@ func NewSchema() *Schema {
 		UpdatedAtColumnName: "updated_at",
 		// set the default name for the trigger that sets the "updated_at" column.
 		SetTimestampTriggerName: "set_timestamp",
+		Strict:                  true,
 	}
 }
 
@@ -101,7 +106,7 @@ func (s *Schema) MustRegister(tableName string, emptyStructValue any, opts ...Ta
 	if err != nil {                                             // if there is an error
 		panic(err) // panic with the error
 	}
-	td.SetStrict(true)
+	td.SetStrict(s.Strict)
 
 	return s // return the table definition
 }

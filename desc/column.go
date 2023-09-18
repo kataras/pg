@@ -31,7 +31,7 @@ type (
 		TypeArgument string // an optional argument for the data type, e.g. 255 when Type is "varchar"
 		PrimaryKey   bool   // a flag that indicates if the column is a primary key
 		Identity     bool   // a flag that indicates if the column is an identity column, e.g. INT GENERATED ALWAYS AS IDENTITY
-		// Required        bool         // a flag that indicates if the column is required (not null)
+		// Required        bool         // a flag that indicates if the column is required (not null, let's just use the !Nullable)
 		Default         string // an optional default value or sql function for the column
 		CheckConstraint string // an optional check constraint for the column
 		Unique          bool   // a flag that indicates if the column has a unique constraint (postgres automatically adds an index for that single one)
@@ -144,7 +144,18 @@ func (c *Column) FieldTagString(strict bool) string {
 		// writeTagProp(b, ",default=%s", nullLiteral)
 		writeTagProp(b, ",nullable", true)
 	} else {
-		writeTagProp(b, ",default=%s", c.Default)
+		defaultValue := c.Default
+		if !strict {
+			// E.g. {}::integer[], we need to cut the ::integer[] part as it's so strict.
+			// Cut {}::integer[] the :: part.
+			if names, ok := dataTypeText[c.Type]; ok {
+				for _, name := range names {
+					defaultValue = strings.TrimSuffix(defaultValue, "::"+name)
+				}
+			}
+		}
+
+		writeTagProp(b, ",default=%s", defaultValue)
 	}
 
 	writeTagProp(b, ",unique", c.Unique)

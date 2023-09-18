@@ -79,10 +79,12 @@ func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr interface{}) error {
 		return err // return an error if finding scan targets failed
 	}
 
-	if td.Strict {
-		for i, t := range scanTargets {
-			if t == nil {
-				return fmt.Errorf("struct doesn't have corresponding row field: %s", rows.FieldDescriptions()[i].Name) // return an error if the struct doesn't have a field for a column
+	for i, t := range scanTargets {
+		if t == nil {
+			if td.Strict {
+				return fmt.Errorf("struct doesn't have corresponding row field: %s (strict check)", rows.FieldDescriptions()[i].Name) // return an error if the struct doesn't have a field for a column
+			} else {
+				scanTargets[i] = &nullScanner{}
 			}
 		}
 	}
@@ -130,6 +132,12 @@ func findScanTargets(dstElemValue reflect.Value, td *Table, fieldDescs []pgconn.
 	}
 
 	return scanTargets, nil // return the scan targets and nil error
+}
+
+type nullScanner struct{}
+
+func (t *nullScanner) Scan(src interface{}) error {
+	return nil
 }
 
 type passwordTextScanner struct {
