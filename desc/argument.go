@@ -121,7 +121,9 @@ func filterArguments(args Arguments, filter func(arg Argument) bool) Arguments {
 
 // FilterArgumentsForInsert takes a slice of arguments and returns a slice of arguments for insert.
 func filterArgumentsForFullUpdate(args Arguments) Arguments {
-	return filterArguments(args, func(arg Argument) bool { return !arg.Column.IsGenerated() })
+	return filterArguments(args, func(arg Argument) bool {
+		return !arg.Column.IsGenerated() && !arg.Column.Presenter // && !arg.Column.Unscannable
+	})
 }
 
 // extractPrimaryKeyValues takes a table definition and a slice of reflect values of structs

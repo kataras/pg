@@ -1,6 +1,7 @@
 package desc
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -84,12 +85,25 @@ func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr interface{}) error {
 			if td.Strict {
 				return fmt.Errorf("struct doesn't have corresponding row field: %s (strict check)", rows.FieldDescriptions()[i].Name) // return an error if the struct doesn't have a field for a column
 			} else {
-				scanTargets[i] = &nullScanner{}
+				scanTargets[i] = &noOpScanner{}
 			}
 		}
 	}
 
 	if err = rows.Scan(scanTargets...); err != nil {
+		// Help developer to find what field was errored:
+		var scanArgErr pgx.ScanArgError
+		if errors.As(err, &scanArgErr) {
+			if len(td.Columns) > scanArgErr.ColumnIndex {
+				col := td.Columns[scanArgErr.ColumnIndex]
+				destColumnName := col.Name
+				err = fmt.Errorf("%w: field: %s.%s (%s): column: %s.%s",
+					err,
+					col.Table.StructName, col.FieldName, col.FieldType.String(),
+					col.TableName, destColumnName)
+			}
+		}
+
 		return err // return an error if scanning the row data failed
 	}
 
@@ -127,6 +141,14 @@ func findScanTargets(dstElemValue reflect.Value, td *Table, fieldDescs []pgconn.
 			}
 		}
 
+		if col.Type == UUID && col.Nullable {
+			scanTargets[i] = &nullableScanner{
+				uuidFieldPtr: dstElemValue.FieldByIndex(col.FieldIndex),
+			}
+
+			continue
+		}
+
 		// get the scan target by using the field index and taking the address and interface of the struct field
 		scanTargets[i] = dstElemValue.FieldByIndex(col.FieldIndex).Addr().Interface()
 	}
@@ -134,9 +156,21 @@ func findScanTargets(dstElemValue reflect.Value, td *Table, fieldDescs []pgconn.
 	return scanTargets, nil // return the scan targets and nil error
 }
 
-type nullScanner struct{}
+type noOpScanner struct{}
 
-func (t *nullScanner) Scan(src interface{}) error {
+func (t *noOpScanner) Scan(src interface{}) error { return nil }
+
+type nullableScanner struct { // useful for UUIDs with null values.
+	uuidFieldPtr reflect.Value
+}
+
+func (t *nullableScanner) Scan(src interface{}) error {
+	if src == nil {
+		return nil
+	}
+
+	t.uuidFieldPtr.Set(reflect.ValueOf(src))
+
 	return nil
 }
 

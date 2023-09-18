@@ -29,7 +29,7 @@ func BuildDuplicateQuery(td *Table, idPtr any) (string, error) {
 	// (name, tag, source_id)
 	b.WriteByte(leftParenLiteral)
 
-	columns := td.ListColumnsWithoutGenerated()
+	columns := td.listColumnsForSelectWithoutGenerated()
 	for i, c := range columns {
 		if i > 0 {
 			b.WriteByte(',')
