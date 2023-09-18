@@ -260,6 +260,10 @@ func buildInsertPassword(paramName string) string {
 }
 
 func writeInsertReturning(b *strings.Builder, columnKey string) {
+	if columnKey == "" {
+		return
+	}
+
 	b.WriteByte(' ')
 	b.WriteString(`RETURNING`)
 	b.WriteByte(' ')

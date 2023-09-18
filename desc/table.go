@@ -108,6 +108,20 @@ func (td *Table) RemoveColumns(columnNames ...string) {
 	}
 }
 
+// ListColumnsWithoutGenerated returns the columns of the table definition except the generated ones.
+func (td *Table) ListColumnsWithoutGenerated() []*Column {
+	columns := make([]*Column, 0, len(td.Columns))
+	for _, c := range td.Columns {
+		if c.IsGenerated() {
+			continue
+		}
+
+		columns = append(columns, c)
+	}
+
+	return columns
+}
+
 // ListColumnNames returns the column names of the table definition.
 func (td *Table) ListColumnNames() []string {
 	names := make([]string, 0, len(td.Columns))

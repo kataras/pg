@@ -288,3 +288,11 @@ func toInterfaces[T any](values []T) []any {
 
 	return valuesAsInterfaces
 }
+
+// Duplicate duplicates a row from a table by matching the id column with the given argument.
+// The idPtr parameter can be used to get the primary key value of the inserted row.
+// If idPtr is nil, the primary key value is not returned.
+// If the value is nil, the method returns nil.
+func (repo *Repository[T]) Duplicate(ctx context.Context, id any, newIDPtr any) error {
+	return repo.db.duplicateTableRecord(ctx, repo.td, id, newIDPtr)
+}

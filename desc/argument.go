@@ -121,21 +121,7 @@ func filterArguments(args Arguments, filter func(arg Argument) bool) Arguments {
 
 // FilterArgumentsForInsert takes a slice of arguments and returns a slice of arguments for insert.
 func filterArgumentsForFullUpdate(args Arguments) Arguments {
-	return filterArguments(args, func(arg Argument) bool {
-		c := arg.Column
-
-		if c.IsGeneratedTimestamp() {
-			// It is created_at or updated_at type of column.
-			return false
-		}
-
-		if c.IsGeneratedPrimaryUUID() {
-			// It's a generated primary key.
-			return false
-		}
-
-		return true
-	})
+	return filterArguments(args, func(arg Argument) bool { return !arg.Column.IsGenerated() })
 }
 
 // extractPrimaryKeyValues takes a table definition and a slice of reflect values of structs
@@ -148,7 +134,7 @@ func extractPrimaryKeyValues(td *Table, values []any) (string, []any, error) {
 
 	ids := make([]any, 0, len(values))
 	for _, value := range values {
-		idValue, err := extractPrimaryKeyValue(primaryKey, IndirectValue(value))
+		idValue, err := ExtractPrimaryKeyValue(primaryKey, IndirectValue(value))
 		if err != nil {
 			return "", nil, err
 		}
@@ -159,8 +145,8 @@ func extractPrimaryKeyValues(td *Table, values []any) (string, []any, error) {
 	return primaryKey.Name, ids, nil
 }
 
-// extractPrimaryKeyValue takes a column definition and a reflect value of a struct
-func extractPrimaryKeyValue(primaryKey *Column, structValue reflect.Value) (any, error) {
+// ExtractPrimaryKeyValue takes a column definition and a reflect value of a struct
+func ExtractPrimaryKeyValue(primaryKey *Column, structValue reflect.Value) (any, error) {
 	idField := structValue.FieldByIndex(primaryKey.FieldIndex)
 	if idField.IsZero() {
 		return nil, fmt.Errorf("primary key field value is zero")

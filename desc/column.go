@@ -84,6 +84,11 @@ func (c *Column) IsGeneratedPrimaryUUID() bool {
 		(c.Default == genRandomUUIDPGCryptoFunction1 || c.Default == genRandomUUIDPGCryptoFunction2)
 }
 
+// IsGenerated returns true if the column is a generated column.
+func (c *Column) IsGenerated() bool {
+	return c.IsGeneratedPrimaryUUID() || c.IsGeneratedTimestamp()
+}
+
 //nolint:all
 func writeTagProp(w io.StringWriter, key string, value any) {
 	if key == "" {

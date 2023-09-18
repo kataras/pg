@@ -349,3 +349,53 @@ func (db *DB) updateTableRecord(ctx context.Context, value any, columnsToUpdate 
 
 	return tag.RowsAffected(), nil
 }
+
+// Duplicate duplicates a row in the database by building and executing an
+// SQL query based on the value's primary key (uses SELECT for insert column values).
+// The idPtr parameter can be used to get the primary key value of the inserted row.
+// If idPtr is nil, the primary key value is not returned.
+// If the value is nil, the method returns nil.
+func (db *DB) Duplicate(ctx context.Context, value any, idPtr any) error {
+	if value == nil { // return false and nil if no values are given
+		return nil
+	}
+
+	val := desc.IndirectValue(value)
+	td, err := db.schema.Get(desc.IndirectType(val.Type())) // get the table definition from the schema based on the type of the value
+	if err != nil {
+		return err // return the error if the table definition is not found
+	}
+
+	primaryKey, ok := td.PrimaryKey()
+	if !ok {
+		return fmt.Errorf("duplicate: primary key is required")
+	}
+
+	idValue, err := desc.ExtractPrimaryKeyValue(primaryKey, val)
+	if err != nil {
+		return err
+	}
+
+	return db.duplicateTableRecord(ctx, td, idValue, idPtr)
+}
+
+func (db *DB) duplicateTableRecord(ctx context.Context, td *desc.Table, id any, newIDPtr any) error {
+	if id == nil {
+		return fmt.Errorf("duplicate: id is required")
+	}
+
+	query, err := desc.BuildDuplicateQuery(td, newIDPtr)
+	if err != nil {
+		return err
+	}
+
+	if newIDPtr != nil {
+		// Bind returning id.
+		err = db.QueryRow(ctx, query, id).Scan(newIDPtr)
+	} else {
+		// Otherwise just execution the insert command.
+		_, err = db.Exec(ctx, query, id)
+	}
+
+	return err
+}

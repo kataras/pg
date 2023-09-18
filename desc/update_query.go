@@ -35,7 +35,7 @@ func BuildUpdateQuery(value any, columnsToUpdate []string, primaryKey *Column) (
 func extractUpdateArguments(value any, columnsToUpdate []string, primaryKey *Column) (Arguments, error) {
 	structValue := IndirectValue(value)
 
-	id, err := extractPrimaryKeyValue(primaryKey, structValue)
+	id, err := ExtractPrimaryKeyValue(primaryKey, structValue)
 	if err != nil {
 		return nil, err
 	}
