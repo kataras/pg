@@ -125,13 +125,13 @@ func (c *Constraint) BuildColumn(column *Column) error {
 	case PrimaryKeyConstraintType:
 		column.PrimaryKey = true
 	case UniqueConstraintType:
-		// if len(c.Unique.Columns) == 0 {
-		// 	// simple unique to itself.
-		// 	column.Unique = true
-		// } else {
-		// 	column.UniqueIndex = c.ConstraintName
-		// }
-		column.Unique = true
+		if len(c.Unique.Columns) == 0 || (len(c.Unique.Columns) == 1 && c.Unique.Columns[0] == c.ColumnName) {
+			// simple unique to itself.
+			column.Unique = true
+		} else {
+			column.UniqueIndex = c.ConstraintName
+		}
+		// column.Unique = true
 	case CheckConstraintType:
 		column.CheckConstraint = c.Check.Expression
 	case ForeignKeyConstraintType:

@@ -469,6 +469,7 @@ func (db *DB) ListColumns(ctx context.Context, tableNames ...string) ([]*desc.Co
 			if uniqueIndex.TableName == column.TableName {
 				for _, columnName := range uniqueIndex.Columns {
 					if columnName == column.Name {
+						column.Unique = false
 						column.UniqueIndex = uniqueIndex.IndexName
 						break uniqueIndexLoop
 					}
