@@ -4,7 +4,7 @@
 
 <img align="left" src="https://www.iris-go.com/images/pg_logo.png">
 
-A high-performance Go library that provides a simple and elegant way to interact with PostgreSQL databases. It allows you to define your entities as structs with pg tags, register them in a schema, and perform CRUD operations using a repository pattern. It also handles database connection, schema creation and verification, and query generation and execution. You can use PG to write concise and readable code that works with PostgreSQL databases.
+A high-performance Go library that provides a simple and elegant way to interact with PostgreSQL databases (works perfectly with the latest 16.x versions). It allows you to define your entities as structs with pg tags, register them in a schema, and perform CRUD operations using a repository pattern. It also handles database connection, schema creation and verification, and query generation and execution. You can use PG to write concise and readable code that works with PostgreSQL databases.
 
 <br/>
 

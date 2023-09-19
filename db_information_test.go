@@ -6,7 +6,7 @@ import (
 )
 
 // This should match the CI's postgres version.
-const expectedDBVersion = "16.0"
+const expectedDBVersion = "16"
 
 func TestInformation_GetVersion(t *testing.T) {
 	db, err := openEmptyTestConnection()
