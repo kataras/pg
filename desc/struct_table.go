@@ -3,6 +3,7 @@ package desc
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -50,7 +51,63 @@ const (
 
 	genRandomUUIDPGCryptoFunction1 = "gen_random_uuid()"
 	genRandomUUIDPGCryptoFunction2 = "uuid_generate_v4()"
+
+	// foreign key on delete actions:
+	refNoAction = "NO ACTION"
+	refCascade  = "CASCADE"
+	refRestrict = "RESTRICT"
+	refSetNull  = "SET NULL"
+	refSetDef   = "SET DEFAULT"
 )
+
+func isForeignKeyOnDeleteActionValid(s string) bool {
+	switch strings.ToUpper(s) {
+	case refNoAction, refCascade, refRestrict, refSetNull, refSetDef:
+		return true
+	default:
+		return false
+	}
+}
+
+var (
+	refLineRegex           = regexp.MustCompile(`(?i)(\w+)\((\w+)\s*(no action|cascade|restrict|set null|set default)?\s*(\w*)?\)$`)
+	errInvalidReferenceTag = fmt.Errorf("invalid reference tag")
+)
+
+func parseReferenceTagValue(value string) (refTableName, refColumnName, onDeleteAction string, isDeferrable bool, err error) {
+	matches := refLineRegex.FindStringSubmatch(value)
+	if len(matches) < 5 {
+		return "", "", "", false, fmt.Errorf("%w: %s", errInvalidReferenceTag, value)
+	}
+
+	refTableName = matches[1]
+	refColumnName = matches[2]
+	// If the string does not have those parts,
+	// the regexp will still match the table name and the column name,
+	// but the submatches for the optional parts will be empty strings.
+	// The matches[3 and 4] will not crash the program because it will still return a valid string, even if it’s empty.
+	onDeleteAction = strings.ToUpper(matches[3])
+	if onDeleteAction == "" {
+		onDeleteAction = refCascade // defaults to cascade.
+	}
+
+	deferrableValue := strings.ToUpper(matches[4])
+	if deferrableValue != "" && deferrableValue != "DEFERRABLE" {
+		return "", "", "", false, fmt.Errorf("%w: %s: invalid deferrable value: %s", errInvalidReferenceTag, value, deferrableValue)
+	}
+
+	isDeferrable = deferrableValue == "DEFERRABLE"
+
+	if !isForeignKeyOnDeleteActionValid(onDeleteAction) { // this check is not needed, but we do it anyway.
+		return "", "", "", false, fmt.Errorf("%w: %s: invalid on delete action: %s", errInvalidReferenceTag, value, onDeleteAction)
+	}
+
+	if isDeferrable && onDeleteAction == refRestrict {
+		return "", "", "", false, fmt.Errorf("%w: %s: deferrable reference cannot have RESTRICT on delete", errInvalidReferenceTag, value)
+	}
+
+	return
+}
 
 // convertStructFieldToColumnDefinion takes a table name and a reflect.StructField that represents a struct field
 // and returns a pointer to a Column that represents a column definition for the database
@@ -192,22 +249,33 @@ func convertStructFieldToColumnDefinion(tableName string, field reflect.StructFi
 				return c, fmt.Errorf("struct field: %s: invalid reference tag: %s", field.Name, fieldTag)
 			}
 
-			refTableName := value[0:idx]
-			refColumnNameLine := strings.Split(value[idx+1:len(value)-1], " ") // e.g. "ref=blogs(id cascade deferrable)"
+			/*
+				refTableName := value[0:idx]
+				refColumnNameLine := strings.Split(value[idx+1:len(value)-1], " ") // e.g. "ref=blogs(id cascade deferrable)"
+
+				c.ReferenceTableName = refTableName
+				c.ReferenceColumnName = refColumnNameLine[0]
+
+				if len(refColumnNameLine) > 1 {
+					c.ReferenceOnDelete = strings.ToUpper(refColumnNameLine[1])
+				} else {
+					c.ReferenceOnDelete = "CASCADE"
+				}
+
+				if len(refColumnNameLine) > 2 {
+					c.DeferrableReference = strings.ToUpper(refColumnNameLine[2]) == "DEFERRABLE"
+				}
+			*/
+
+			refTableName, refColumnName, onDeleteAction, isDeferrable, err := parseReferenceTagValue(value)
+			if err != nil {
+				return c, fmt.Errorf("struct field: %s: %w", field.Name, err)
+			}
 
 			c.ReferenceTableName = refTableName
-			c.ReferenceColumnName = refColumnNameLine[0]
-
-			if len(refColumnNameLine) > 1 {
-				c.ReferenceOnDelete = strings.ToUpper(refColumnNameLine[1])
-			} else {
-				c.ReferenceOnDelete = "CASCADE"
-			}
-
-			if len(refColumnNameLine) > 2 {
-				c.DeferrableReference = strings.ToUpper(refColumnNameLine[2]) == "DEFERRABLE"
-			}
-
+			c.ReferenceColumnName = refColumnName
+			c.ReferenceOnDelete = onDeleteAction
+			c.DeferrableReference = isDeferrable
 		case "index":
 			idx := parseIndexType(value)
 			if idx == InvalidIndex {

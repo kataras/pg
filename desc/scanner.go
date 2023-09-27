@@ -96,6 +96,9 @@ func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr interface{}) error {
 		if errors.As(err, &scanArgErr) {
 			if len(td.Columns) > scanArgErr.ColumnIndex {
 				col := td.Columns[scanArgErr.ColumnIndex]
+				// NOTE: this index may be invalid if the struct contains different order of the column in database,
+				// the only one option is to use the col's OrdinalPosition (starting from 1, where scanArgErr.ColumnIndex starts from 0)
+				// but OrdinalPosition is set only when CheckSchema method was called previously.
 				destColumnName := col.Name
 				err = fmt.Errorf("%w: field: %s.%s (%s): column: %s.%s",
 					err,

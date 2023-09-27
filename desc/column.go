@@ -50,7 +50,7 @@ type (
 		ReferenceTableName  string // an optional reference table name for a foreign key constraint, e.g. user_profiles(id) -> user_profiles
 		ReferenceColumnName string // an optional reference column name for a foreign key constraint, e.g. user_profiles(id) -> id
 		DeferrableReference bool   // a flag that indicates if the foreign key constraint is deferrable (omits foreign key checks on transactions)
-		ReferenceOnDelete   string // an optional action for deleting referenced rows when referencing rows are deleted, e.g. CASCADE
+		ReferenceOnDelete   string // an optional action for deleting referenced rows when referencing rows are deleted, e.g. NO ACTION, RESTRICT, CASCADE, SET NULL and SET DEFAULT. Defaults to CASCADE.
 
 		Index IndexType // an optional index type for the column
 
