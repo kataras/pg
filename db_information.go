@@ -337,6 +337,64 @@ func (db *DB) GetVersion(ctx context.Context) (string, error) {
 	return versionNumber, nil // return the version number and nil as no error occurred
 }
 
+// SizeInfo is a struct which contains the size information (for individual table or the whole database).
+type SizeInfo struct {
+	SizePretty string `json:"size_pretty"`
+	// The on-disk size in bytes of one fork of that relation.
+	// A fork is a variant of the main data file that stores additional information,
+	// such as the free space map, the visibility map, or the initialization fork.
+	// By default, this is the size of the main data fork only.
+	Size float64 `json:"size"`
+
+	SizeTotalPretty string `json:"size_total_pretty"`
+	// The total on-disk space used for that table, including all associated indexes. This is equivalent to pg_table_size + pg_indexes_size.
+	SizeTotal float64 `json:"size_total"`
+}
+
+// TableSizeInfo is a struct which contains the table size information used as an output parameter of the `db.ListTableSizes` method.
+type TableSizeInfo struct {
+	TableName string `json:"table_name"`
+	SizeInfo
+}
+
+// ListTableSizes lists the disk size of tables (not only the registered ones) in the database.
+func (db *DB) ListTableSizes(ctx context.Context) ([]TableSizeInfo, error) {
+	query := `SELECT
+	table_name,
+	pg_size_pretty(pg_relation_size(quote_ident(table_name))) AS size_pretty,
+	pg_relation_size(quote_ident(table_name)) AS size,
+	  pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) AS size_total_pretty,
+	  pg_total_relation_size(quote_ident(table_name)) AS size_total
+  FROM information_schema.tables
+  WHERE table_schema = $1
+  ORDER BY 3 DESC;`
+
+	return scanQuery[TableSizeInfo](ctx, db, func(rows Rows) (t TableSizeInfo, err error) {
+		err = rows.Scan(&t.TableName, &t.SizePretty, &t.Size, &t.SizeTotalPretty, &t.SizeTotal)
+		return
+	}, query, db.searchPath)
+}
+
+// GetSize returns the sum of size of all the database tables.
+func (db *DB) GetSize(ctx context.Context) (t SizeInfo, err error) {
+	query := `SELECT
+	 pg_size_pretty(SUM(size)) AS size_pretty,
+	 SUM(size) AS size, pg_size_pretty(SUM(size_total)) AS size_total_pretty,
+	 SUM(size_total) AS size_total
+	 FROM (
+		SELECT
+		  table_name,
+		  pg_relation_size(quote_ident(table_name)) AS size,
+			pg_total_relation_size(quote_ident(table_name)) AS size_total
+		FROM information_schema.tables
+		WHERE table_schema = $1
+		ORDER BY 1 DESC
+	) f;`
+
+	err = db.QueryRow(ctx, query, db.searchPath).Scan(&t.SizePretty, &t.Size, &t.SizeTotalPretty, &t.SizeTotal)
+	return
+}
+
 // MapTypeFilter is a map of expressions inputs text to field type.
 // It's a TableFilter.
 //

@@ -89,3 +89,27 @@ func QuerySingle[T any](ctx context.Context, db *DB, query string, args ...any) 
 	err = db.QueryRow(ctx, query, args...).Scan(&entry)
 	return
 }
+
+func scanQuery[T any](ctx context.Context, db *DB, scanner func(rows Rows) (T, error), query string, args ...any) ([]T, error) {
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []T
+
+	for rows.Next() {
+		entry, err := scanner(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, entry)
+	}
+
+	if err = rows.Err(); err != nil && err != ErrNoRows {
+		return nil, err
+	}
+
+	return list, nil
+}
