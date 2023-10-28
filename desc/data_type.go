@@ -75,6 +75,7 @@ const (
 	TsVector              // TsVector represents a text search document that contains lexemes and their positions.
 	TxIDSnapshot          // TxIDSnapshot represents the state of transactions at some point in time. It can be used to implement multiversion concurrency control (MVCC).
 	UUID                  // UUID represents an universally unique identifier (16 bytes).
+	UUIDArray             // UUIDArray represents an array of universally unique identifiers (16 bytes).
 	XML                   // XML represents an XML data structure in text format.
 	// Multiranges: https://www.postgresql.org/docs/14/rangetypes.html#RANGETYPES-BUILTIN.
 	Int4Range // Range of integer, int4multirange.
@@ -144,6 +145,7 @@ var dataTypeText = map[DataType][]string{ // including their aliases.
 	TsVector:              {"tsvector"},
 	TxIDSnapshot:          {"txid_snapshot"},
 	UUID:                  {"uuid"},
+	UUIDArray:             {"[]uuid"},
 	XML:                   {"xml"},
 	Int4Range:             {"int4range"},
 	Int4MultiRange:        {"int4multirange"},
@@ -191,7 +193,7 @@ func (t DataType) IsString(s string) bool {
 // IsArray returns true if the data type is an array.
 func (t DataType) IsArray() bool {
 	switch t {
-	case BigIntArray, IntegerArray, IntegerDoubleArray, CharacterArray, CharacterVaryingArray, TextArray, TextDoubleArray:
+	case BigIntArray, IntegerArray, IntegerDoubleArray, CharacterArray, CharacterVaryingArray, TextArray, TextDoubleArray, UUIDArray:
 		return true
 	default:
 		return false
@@ -328,13 +330,13 @@ func dataTypeToGoType(dataType DataType) reflect.Type {
 		return arrayIntegerTyp
 	case IntegerDoubleArray:
 		return doubleArrayIntegerTyp
-	case CharacterVaryingArray:
+	case CharacterVaryingArray, TextArray, UUIDArray:
 		return arrayStringTyp
 	case Boolean:
 		return booleanTyp
 	case TextDoubleArray:
 		return doubleArrayStringTyp
-	case Timestamp:
+	case Time, TimeTZ, Timestamp, TimestampTZ:
 		return timeType
 	case Interval:
 		return timeDurationTyp
