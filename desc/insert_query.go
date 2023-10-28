@@ -24,7 +24,7 @@ func BuildInsertQuery(td *Table, structValue reflect.Value, idPtr any, forceOnCo
 	}
 
 	// find the arguments for the SQL query based on the struct value and the table definition
-	args, err := extractArguments(td, structValue)
+	args, err := extractArguments(td, structValue, nil)
 	if err != nil {
 		return "", nil, err // return the error if finding arguments fails
 	}

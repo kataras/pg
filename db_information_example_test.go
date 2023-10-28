@@ -53,6 +53,7 @@ func ExampleDB_ListColumns() {
 		`[customers.cognito_user_id] pg:"name=cognito_user_id,type=uuid,unique_index=customer_unique_idx"`,
 		`[customers.email] pg:"name=email,type=varchar(255),unique_index=customer_unique_idx"`,
 		`[customers.name] pg:"name=name,type=varchar(255),index=btree"`,
+		`[customers.username] pg:"name=username,type=varchar(255),default=''::character varying"`,
 	}
 
 	for i, column := range columns {
@@ -167,6 +168,7 @@ func ExampleDB_ListColumnsInformationSchema() {
 	// &desc.ColumnBasicInfo{TableName:"customers", TableDescription:"", TableType:0x0, Name:"cognito_user_id", OrdinalPosition:4, Description:"", Default:"", DataType:0x2f, DataTypeArgument:"", IsNullable:false, IsIdentity:false, IsGenerated:false}
 	// &desc.ColumnBasicInfo{TableName:"customers", TableDescription:"", TableType:0x0, Name:"email", OrdinalPosition:5, Description:"", Default:"", DataType:0xb, DataTypeArgument:"255", IsNullable:false, IsIdentity:false, IsGenerated:false}
 	// &desc.ColumnBasicInfo{TableName:"customers", TableDescription:"", TableType:0x0, Name:"name", OrdinalPosition:6, Description:"", Default:"", DataType:0xb, DataTypeArgument:"255", IsNullable:false, IsIdentity:false, IsGenerated:false}
+	// &desc.ColumnBasicInfo{TableName:"customers", TableDescription:"", TableType:0x0, Name:"username", OrdinalPosition:7, Description:"", Default:"''::character varying", DataType:0xb, DataTypeArgument:"255", IsNullable:false, IsIdentity:false, IsGenerated:false}
 }
 
 func ExampleDB_ListConstraints() {

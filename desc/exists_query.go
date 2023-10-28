@@ -10,7 +10,7 @@ import (
 // BuildExistsQuery builds and returns an SQL query for checking of existing in a row in the table,
 // based on the given struct value.
 func BuildExistsQuery(td *Table, structValue reflect.Value) (string, []any, error) {
-	args, err := extractArguments(td, structValue)
+	args, err := extractArguments(td, structValue, nil)
 	if err != nil {
 		return "", nil, err // return the error if finding arguments fails
 	}

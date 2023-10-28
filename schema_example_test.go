@@ -28,6 +28,8 @@ type Customer struct {
 	Email         string `pg:"type=varchar(255),unique_index=customer_unique_idx"`
 	// ^ optional: unique to allow upsert by "email"-only column confliction instead of the unique_index.
 	Name string `pg:"type=varchar(255),index=btree"`
+
+	Username string `pg:"type=varchar(255),default=''::character varying"`
 }
 
 // Blog is a struct that represents a blog entity in the database.

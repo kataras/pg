@@ -40,22 +40,28 @@ func extractUpdateArguments(value any, columnsToUpdate []string, primaryKey *Col
 		return nil, err
 	}
 
-	args, err := extractArguments(primaryKey.Table, structValue)
+	columnsToUpdateLength := len(columnsToUpdate)
+
+	args, err := extractArguments(primaryKey.Table, structValue, func(fieldName string) bool {
+		if columnsToUpdateLength == 0 {
+			// full update.
+			return true
+		}
+
+		for _, onlyColumnName := range columnsToUpdate {
+			if onlyColumnName == fieldName {
+				return true
+			}
+		}
+
+		return false
+	})
 	if err != nil {
 		return nil, err // return the error if finding arguments fails
 	}
 
-	if len(columnsToUpdate) > 0 { // if specific columns to update, then override the default behavior.
-		args = filterArguments(args, func(arg Argument) bool {
-			for _, onlyColumnName := range columnsToUpdate {
-				if arg.Column.Name == onlyColumnName {
-					return true
-				}
-			}
-
-			return false
-		})
-	} else { // otherwise full update, even zero values (e.g. integer 0) all except ID and any created_at, updated_at.
+	if columnsToUpdateLength == 0 {
+		// full update, even zero values (e.g. integer 0) all except ID and any created_at, updated_at.
 		args = filterArgumentsForFullUpdate(args)
 	}
 

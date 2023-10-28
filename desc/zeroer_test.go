@@ -4,12 +4,17 @@ import (
 	"encoding/json"
 	"math/big"
 	"net"
+	"reflect"
 	"testing"
 	"time"
 )
 
 // TestIsZero tests the isZero function with various inputs and outputs
 func TestIsZero(t *testing.T) {
+	now := time.Now()
+	timePtr := &now
+	var nilTimePtr *time.Time
+
 	// Define a table of test cases
 	testCases := []struct {
 		input  any  // input value
@@ -44,10 +49,18 @@ func TestIsZero(t *testing.T) {
 		{net.IPv4(127, 0, 0, 1), false},         // non-empty net.IP should not be zero
 		{time.Time{}, true},                     // empty time.Time (zero time) should be zero
 		{time.Now(), false},                     // non-empty time.Time (current time) should not be zero
+		{timePtr, false},                        // non-nil time.Time (current time) should not be zero
+		{nilTimePtr, true},                      // nil time.Time should be zero
 	}
 
 	for i, tc := range testCases {
-		if tc.input == nil {
+		isNil := false
+
+		if val := reflect.ValueOf(tc.input); val.Kind() == reflect.Pointer {
+			isNil = val.IsNil()
+		}
+
+		if tc.input == nil || isNil {
 			t.Run("nil", func(t *testing.T) {
 				result := isZero(tc.input) // call the isZero function with the input
 				if result != tc.output {   // compare the result with the expected output

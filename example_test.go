@@ -30,6 +30,7 @@ func Example() {
 			CognitoUserID: "373f90eb-00ac-410f-9fe0-1a7058d090ba",
 			Email:         "kataras2006@hotmail.com",
 			Name:          "kataras",
+			Username:      "kataras",
 		}
 
 		// Insert the customer into the database and get its ID.
@@ -43,8 +44,6 @@ func Example() {
 		// Update specific columns by id:
 		updated, err := customers.UpdateOnlyColumns(
 			context.Background(),
-			// TODO: make a generator for: models.Customers.Columns.CognitoUserID.Name so
-			// end-developers have static safety for columns.
 			[]string{"cognito_user_id"},
 			Customer{
 				BaseEntity: BaseEntity{
@@ -68,6 +67,21 @@ func Example() {
 			return fmt.Errorf("update: no record was updated")
 		}
 
+		// Update a default column to its zero value.
+		updated, err = customers.UpdateOnlyColumns(
+			context.Background(),
+			[]string{"username"},
+			Customer{
+				BaseEntity: BaseEntity{
+					ID: customerToInsert.ID,
+				},
+				Username: "",
+			})
+		if err != nil {
+			return fmt.Errorf("update username: %w", err)
+		} else if updated == 0 {
+			return fmt.Errorf("update username: no record was updated")
+		}
 		// Select the customer from the database by its ID.
 		customer, err := customers.SelectSingle(context.Background(), `SELECT * FROM customers WHERE id = $1;`, customerToInsert.ID)
 		if err != nil {
@@ -218,4 +232,7 @@ func Example() {
 		fmt.Printf("expected other_features to be equal but got %#+v and %#+v", otherFeatures, existingBlogPost.OtherFeatures)
 		return
 	}
+
+	// Output:
+	//
 }

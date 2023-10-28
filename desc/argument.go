@@ -54,7 +54,7 @@ func shiftToEndEnd[T any](s []T, x int) []T {
 
 // extractArguments takes a reflect value of a struct and a table definition
 // and returns a slice of arguments for each column in the table that is not auto-generated or has a default value.
-func extractArguments(td *Table, structValue reflect.Value) (Arguments, error) {
+func extractArguments(td *Table, structValue reflect.Value, filter func(columnName string) bool) (Arguments, error) {
 	args := make(Arguments, 0, len(td.Columns)) // create a slice to hold the arguments
 
 	for _, c := range td.Columns { // loop over each column in the table definition
@@ -69,13 +69,21 @@ func extractArguments(td *Table, structValue reflect.Value) (Arguments, error) {
 
 		fieldValue := field.Interface() // get the field value as an interface
 
-		if c.Default != "" {
-			if isZero(fieldValue) {
-				// skip this field if it has a default value and the field value is zero,
-				// the createTable function has configured the database's default value option
+		if filter != nil {
+			if !filter(c.Name) {
 				continue
 			}
-		} else if c.Type == UUID && c.PrimaryKey && !c.Nullable {
+		} else { // if no custom filter passed, then check by its zero value if no default value on database.
+			if c.Default != "" {
+				if isZero(field) {
+					// skip this field if it has a default value and the field value is zero,
+					// the createTable function has configured the database's default value option
+					continue
+				}
+			}
+		}
+
+		if c.Default != "" && c.Type == UUID && c.PrimaryKey && !c.Nullable {
 			if isZero(fieldValue) {
 				continue // skip this field if it is a UUID primary key and required and the field value is zero
 			}

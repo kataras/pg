@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 	"net"
+	"reflect"
+	"time"
 )
 
 // Zeroer is an interface that defines a method to check if a value is zero.
@@ -23,11 +25,114 @@ func isZero(v any) bool {
 	}
 
 	switch t := v.(type) { // switch on the type of the value
-	case Zeroer: // if the value implements the Zeroer interface (this includes time.Time as well)
-		if t == nil { // if the value is nil, return true
-			return true
+	case *time.Time:
+		return t == nil || t.IsZero()
+	case *string:
+		return t == nil || *t == ""
+	case *int:
+		return t == nil || *t == 0
+	case *int8:
+		return t == nil || *t == 0
+	case *int16:
+		return t == nil || *t == 0
+	case *int32:
+		return t == nil || *t == 0
+	case *int64:
+		return t == nil || *t == 0
+	case *uint:
+		return t == nil || *t == 0
+	case *uint8:
+		return t == nil || *t == 0
+	case *uint16:
+		return t == nil || *t == 0
+	case *uint32:
+		return t == nil || *t == 0
+	case *uint64:
+		return t == nil || *t == 0
+	case *float32:
+		return t == nil || *t == 0
+	case *float64:
+		return t == nil || *t == 0
+	case *bool:
+		return t == nil || !*t
+	case *[]string:
+		return t == nil || len(*t) == 0
+	case *[]int:
+		return t == nil || len(*t) == 0
+	case *[]int8:
+		return t == nil || len(*t) == 0
+	case *[]int16:
+		return t == nil || len(*t) == 0
+	case *[]int32:
+		return t == nil || len(*t) == 0
+	case *[]int64:
+		return t == nil || len(*t) == 0
+	case *[]uint:
+		return t == nil || len(*t) == 0
+	case *[]uint8:
+		return t == nil || len(*t) == 0
+	case *[]uint16:
+		return t == nil || len(*t) == 0
+	case *[]uint32:
+		return t == nil || len(*t) == 0
+	case *[]uint64:
+		return t == nil || len(*t) == 0
+	case *[]float32:
+		return t == nil || len(*t) == 0
+	case *[]float64:
+		return t == nil || len(*t) == 0
+	case *[]bool:
+		return t == nil || len(*t) == 0
+	case *[]any:
+		return t == nil || len(*t) == 0
+	case *map[string]string:
+		return t == nil || len(*t) == 0
+	case *map[string]int:
+		return t == nil || len(*t) == 0
+	case *map[string]any:
+		return t == nil || len(*t) == 0
+	case *map[int]int:
+		return t == nil || len(*t) == 0
+	case *map[int]any:
+		return t == nil || len(*t) == 0
+	case *map[any]any:
+		return t == nil || len(*t) == 0
+	case *map[any]int:
+		return t == nil || len(*t) == 0
+	case *map[any]string:
+		return t == nil || len(*t) == 0
+	case *map[any]float64:
+		return t == nil || len(*t) == 0
+	case *map[any]bool:
+		return t == nil || len(*t) == 0
+	case *map[any][]any:
+		return t == nil || len(*t) == 0
+	case *map[any][]int:
+		return t == nil || len(*t) == 0
+	case *map[any][]string:
+		return t == nil || len(*t) == 0
+	case *map[any]map[any]any:
+		return t == nil || len(*t) == 0
+	case *map[any]map[any]int:
+		return t == nil || len(*t) == 0
+	case *map[any]map[any]string:
+		return t == nil || len(*t) == 0
+	case *map[any]map[any]float64:
+		return t == nil || len(*t) == 0
+	case *map[any]map[any]bool:
+		return t == nil || len(*t) == 0
+	case *map[any]map[any][]any:
+		return t == nil || len(*t) == 0
+	case *map[any]map[any][]int:
+		return t == nil || len(*t) == 0
+	case reflect.Value:
+		if t.Kind() == reflect.Ptr {
+			return t.IsNil()
 		}
-		return t.IsZero() // otherwise, call the IsZero method and return its result
+
+		return t.IsZero()
+	case Zeroer: // if the value implements the Zeroer interface
+		return t == nil || t.IsZero() // call the IsZero method on the value
 	case string: // if the value is a string
 		return t == "" // return true if the string is empty
 	case int: // if the value is an int
