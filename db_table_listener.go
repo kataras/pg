@@ -3,7 +3,9 @@ package pg
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"sync/atomic"
 )
 
@@ -111,8 +113,12 @@ func (db *DB) ListenTable(ctx context.Context, table string, callback func(Table
 		for {
 			var evt TableNotificationJSON
 
-			notification, err := conn.Accept(context.Background())
+			notification, err := conn.Accept(ctx)
 			if err != nil {
+				if errors.Is(err, io.ErrUnexpectedEOF) {
+					return // may produced by close.
+				}
+
 				if callback(evt, err) != nil {
 					return
 				}
