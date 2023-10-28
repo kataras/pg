@@ -68,7 +68,9 @@ const (
 	TextArray             // TextArray represents an array of variable-length character strings with unlimited length.
 	TextDoubleArray       // TextDoubleArray represents an array of arrays of variable-length character strings with unlimited length.
 	Time                  // Time represents the time of day (without time zone).
+	TimeTZ                // TimeTZ represents the time of day (with time zone).
 	Timestamp             // Timestamp represents the date and time of day (without time zone).
+	TimestampTZ           // TimestampTZ represents the date and time of day (with time zone).
 	TsQuery               // TsQuery represents a text search query that can be used to search tsvector values.
 	TsVector              // TsVector represents a text search document that contains lexemes and their positions.
 	TxIDSnapshot          // TxIDSnapshot represents the state of transactions at some point in time. It can be used to implement multiversion concurrency control (MVCC).
@@ -134,8 +136,10 @@ var dataTypeText = map[DataType][]string{ // including their aliases.
 	Text:                  {"text"},
 	TextArray:             {"text[]"},
 	TextDoubleArray:       {"text[][]"},
-	Time:                  {"time", "timetz", "time without time zone", "time(6) without time zone"},
-	Timestamp:             {"timestamp", "timestamptz", "timestamp without time zone", "timestamp(6) without time zone"},
+	Time:                  {"time", "time without time zone", "time(6) without time zone"},
+	TimeTZ:                {"timetz", "time with time zone", "time(6) with time zone"},
+	Timestamp:             {"timestamp", "timestamp without time zone", "timestamp(6) without time zone"},
+	TimestampTZ:           {"timestamptz", "timestamp with time zone", "timestamp(6) with time zone"},
 	TsQuery:               {"tsquery"},
 	TsVector:              {"tsvector"},
 	TxIDSnapshot:          {"txid_snapshot"},
@@ -188,6 +192,16 @@ func (t DataType) IsString(s string) bool {
 func (t DataType) IsArray() bool {
 	switch t {
 	case BigIntArray, IntegerArray, IntegerDoubleArray, CharacterArray, CharacterVaryingArray, TextArray, TextDoubleArray:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsTime returns true if the data type is a time type.
+func (t DataType) IsTime() bool {
+	switch t {
+	case Time, TimeTZ, Timestamp, TimestampTZ:
 		return true
 	default:
 		return false

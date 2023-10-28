@@ -264,8 +264,10 @@ func main() {
 | Text | text |
 | TextArray | text[] |
 | TextDoubleArray | text[][] |
-| Time | time, timetz, time without time zone |
-| Timestamp | timestamp, timestamptz |
+| Time | time, time without time zone |
+| TimeTZ |timetz, time with time zone  |
+| Timestamp | timestamp, timestamp without time zone |
+| TimestampTZ | timestamptz, timestamp with time zone |
 | TsQuery | tsquery |
 | TsVector | tsvector |
 | TxIDSnapshot | txid_snapshot |

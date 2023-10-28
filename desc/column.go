@@ -69,7 +69,7 @@ type (
 // IsGeneratedTimestamp returns true if the column is a timestamp column and
 // has a default value of "clock_timestamp()" or "now()".
 func (c *Column) IsGeneratedTimestamp() bool {
-	if c.Type == Timestamp {
+	if c.Type.IsTime() {
 		defaultValue := strings.ToLower(c.Default)
 		return (defaultValue == "clock_timestamp()" || defaultValue == "now()")
 	}
