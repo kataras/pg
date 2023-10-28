@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/kataras/pg/desc"
 
@@ -86,6 +87,10 @@ type DB struct {
 
 	tx         pgx.Tx
 	dbTxClosed bool
+
+	tableChangeNotifyOnceMutex    *sync.RWMutex
+	tableChangeNotifyFunctionOnce *uint32
+	tableChangeNotifyTriggerOnce  map[string]struct{}
 
 	schema *Schema
 }
@@ -176,10 +181,13 @@ func OpenPool(schema *Schema, pool *pgxpool.Pool) *DB {
 	}
 
 	db := &DB{ // create a new DB instance with the fields
-		Pool:              pool,       // set the pool field
-		ConnectionOptions: config,     // set the connection options field
-		searchPath:        searchPath, // set the search path field
-		schema:            schema,     // set the schema field
+		Pool:                          pool,       // set the pool field
+		ConnectionOptions:             config,     // set the connection options field
+		searchPath:                    searchPath, // set the search path field
+		schema:                        schema,     // set the schema field
+		tableChangeNotifyOnceMutex:    new(sync.RWMutex),
+		tableChangeNotifyFunctionOnce: new(uint32),
+		tableChangeNotifyTriggerOnce:  make(map[string]struct{}),
 	}
 
 	return db // return the DB instance
@@ -194,11 +202,13 @@ func (db *DB) Close() {
 // and returns a new DB pointer to instance.
 func (db *DB) clone(tx pgx.Tx) *DB {
 	clone := &DB{
-		Pool:              db.Pool,
-		ConnectionOptions: db.ConnectionOptions,
-		tx:                tx,
-		schema:            db.schema,
-		searchPath:        db.searchPath,
+		Pool:                          db.Pool,
+		ConnectionOptions:             db.ConnectionOptions,
+		tx:                            tx,
+		schema:                        db.schema,
+		searchPath:                    db.searchPath,
+		tableChangeNotifyFunctionOnce: db.tableChangeNotifyFunctionOnce,
+		tableChangeNotifyTriggerOnce:  db.tableChangeNotifyTriggerOnce,
 	}
 
 	return clone
@@ -440,6 +450,27 @@ func (db *DB) ExecFiles(ctx context.Context, fileReader interface {
 }
 
 // Listen listens for notifications on the given channel and returns a Listener instance.
+//
+// Example Code:
+//
+//	conn, err := db.Listen(context.Background(), channel)
+//	if err != nil {
+//		fmt.Println(fmt.Errorf("listen: %w\n", err))
+//		return
+//	}
+//
+//	// To just terminate this listener's connection and unlisten from the channel:
+//	defer conn.Close(context.Background())
+//
+//	for {
+//		notification, err := conn.Accept(context.Background())
+//		if err != nil {
+//			fmt.Println(fmt.Errorf("accept: %w\n", err))
+//			return
+//		}
+//
+//		fmt.Printf("channel: %s, payload: %s\n", notification.Channel, notification.Payload)
+//	}
 func (db *DB) Listen(ctx context.Context, channel string) (*Listener, error) {
 	conn, err := db.Pool.Acquire(ctx) // Always on top.
 	if err != nil {

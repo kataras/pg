@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -13,12 +14,21 @@ import (
 // Notification is a type alias of pgconn.Notification type.
 type Notification = pgconn.Notification
 
+// Closer is the interface which is implemented by the Listener.
+// It's used to close the underline connection.
+type Closer interface {
+	Close(ctx context.Context) error
+}
+
 // Listener represents a postgres database LISTEN connection.
 type Listener struct {
 	conn *pgxpool.Conn
 
 	channel string
+	closed  uint32
 }
+
+var _ Closer = (*Listener)(nil)
 
 // ErrEmptyPayload is returned when the notification payload is empty.
 var ErrEmptyPayload = fmt.Errorf("empty payload")
@@ -46,15 +56,22 @@ func (l *Listener) Accept(ctx context.Context) (*Notification, error) {
 
 // Close closes the listener connection.
 func (l *Listener) Close(ctx context.Context) error {
+	if l == nil {
+		return nil
+	}
+
 	if l.conn == nil {
 		return nil
 	}
-	defer l.conn.Release()
 
-	query := `SELECT UNLISTEN $1;`
-	_, err := l.conn.Exec(ctx, query, l.channel)
-	if err != nil {
-		return err
+	if atomic.CompareAndSwapUint32(&l.closed, 0, 1) {
+		defer l.conn.Release()
+
+		query := `SELECT UNLISTEN $1;`
+		_, err := l.conn.Exec(ctx, query, l.channel)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

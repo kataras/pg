@@ -2,7 +2,9 @@ package pg
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/kataras/pg/desc"
@@ -295,4 +297,45 @@ func toInterfaces[T any](values []T) []any {
 // If the value is nil, the method returns nil.
 func (repo *Repository[T]) Duplicate(ctx context.Context, id any, newIDPtr any) error {
 	return repo.db.duplicateTableRecord(ctx, repo.td, id, newIDPtr)
+}
+
+// ListenTable registers a function which notifies on the current table's changes (INSERT, UPDATE, DELETE),
+// the subscribed postgres channel is named 'table_change_notifications'.
+// The callback function is called on a separate goroutine.
+//
+// The callback function can return ErrStop to stop the listener without actual error.
+// The callback function can return any other error to stop the listener and return the error.
+// The callback function can return nil to continue listening.
+func (repo *Repository[T]) ListenTable(ctx context.Context, callback func(TableNotification[T], error) error) (Closer, error) {
+	return repo.db.ListenTable(ctx, repo.td.Name, func(tableEvt TableNotificationJSON, err error) error {
+		if err != nil {
+			failEvt := TableNotification[T]{
+				Table:  repo.td.Name,
+				Change: tableEvt.Change, // may empty.
+			}
+
+			return callback(failEvt, err)
+		}
+
+		evt := TableNotification[T]{
+			Table:  tableEvt.Table,
+			Change: tableEvt.Change,
+		}
+
+		if len(tableEvt.Old) > 0 {
+			err := json.Unmarshal(tableEvt.Old, &evt.Old)
+			if err != nil {
+				return fmt.Errorf("table: %s: unmarshal old: %w", tableEvt.Table, err)
+			}
+		}
+
+		if len(tableEvt.New) > 0 {
+			err := json.Unmarshal(tableEvt.New, &evt.New)
+			if err != nil {
+				return fmt.Errorf("table: %s: unmarshal old: %w", tableEvt.Table, err)
+			}
+		}
+
+		return callback(evt, nil)
+	})
 }
