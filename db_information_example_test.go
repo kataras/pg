@@ -53,7 +53,7 @@ func ExampleDB_ListColumns() {
 		`[customers.cognito_user_id] pg:"name=cognito_user_id,type=uuid,unique_index=customer_unique_idx"`,
 		`[customers.email] pg:"name=email,type=varchar(255),unique_index=customer_unique_idx"`,
 		`[customers.name] pg:"name=name,type=varchar(255),index=btree"`,
-		`[customers.username] pg:"name=username,type=varchar(255),default=''::character varying"`,
+		`[customers.username] pg:"name=username,type=varchar(255),default=''::character varying"`, // before columns convert from struct field should match this.
 	}
 
 	for i, column := range columns {

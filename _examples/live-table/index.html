@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PG Real-Time Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ffffff;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #333333;
+        }
+    </style>
+    <script>
+        var socket = new WebSocket("ws://localhost:8080/websocket");
+        socket.onopen = function (event) {
+            socket.send(JSON.stringify({
+                text: "ask_view"
+            }));
+        };
+        socket.onmessage = function (event) {
+            var data = JSON.parse(event.data);
+            console.log(data);
+
+            switch (data.type) {
+                case "view":
+                    // Replace the entire table body.
+                    document.querySelector("tbody").innerHTML = data.data.map(function (row) {
+                        return `<tr data-id="${row.id}"><td>${row.id}</td><td>${row.username}</td><td>${row.email}</td></tr>`;
+                    }).join("");
+                    break;
+                case "insert":
+                    console.log(`insert ${data.data.id}`);
+                    var newRow = `<tr><td>${data.data.id}</td><td>${data.data.username}</td><td>${data.data.email}</td></tr>`;
+                    document.querySelector("tbody").insertAdjacentHTML("beforeBegin" /* or beforeEnd */, newRow);
+                    break;
+                case "update":
+                    console.log(`update ${data.data.id}`);
+                    // Update an existing row (find by ID)
+                    var existingRow = document.querySelector(`tr[data-id="${data.data.id}"]`);
+                    if (existingRow) {
+                        existingRow.innerHTML = `<td>${data.data.id}</td><td>${data.data.username}</td><td>${data.data.email}</td>`;
+                    }
+                    break;
+                case "delete":
+                    console.log(`delete ${data.id}`);
+                    // Remove a row (find by ID)
+                    var rowToRemove = document.querySelector(`tr[data-id="${data.data.id}"]`);
+                    if (rowToRemove) {
+                        rowToRemove.remove();
+                    }
+                    break;
+                default:
+                    console.log(`Don't know how to handle type '${data.type}'`);
+            }
+        };
+    </script>
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Futuristic Minimalist Template</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Replace with dynamic data -->
+                <!-- Example row:
+                <tr data-id="1">
+                    <td>1</td>
+                    <td>JohnDoe</td>
+                    <td>john.doe@example.com</td>
+                </tr> -->
+            </tbody>
+        </table>
+    </div>
+</body>
+
+</html>

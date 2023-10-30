@@ -109,6 +109,8 @@ func parseReferenceTagValue(value string) (refTableName, refColumnName, onDelete
 	return
 }
 
+const characterVaryingCastText = "::character varying"
+
 // convertStructFieldToColumnDefinion takes a table name and a reflect.StructField that represents a struct field
 // and returns a pointer to a Column that represents a column definition for the database
 // or an error if the conversion fails.
@@ -337,6 +339,15 @@ func convertStructFieldToColumnDefinion(tableName string, field reflect.StructFi
 
 	if c.Type == InvalidDataType {
 		return c, fmt.Errorf("struct field: %s: invalid data type on tag: %s", field.Name, fieldTag)
+	}
+
+	// add ::character varying to default value if it's a character varying type so insertion on database and comparing with schema match.
+	if c.Type == CharacterVarying {
+		if c.Default != "" {
+			if !strings.HasSuffix(strings.ToLower(c.Default), characterVaryingCastText) {
+				c.Default = c.Default + characterVaryingCastText
+			}
+		}
 	}
 
 	return c, nil

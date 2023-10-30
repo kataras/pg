@@ -318,21 +318,22 @@ func (repo *Repository[T]) ListenTable(ctx context.Context, callback func(TableN
 		}
 
 		evt := TableNotification[T]{
-			Table:  tableEvt.Table,
-			Change: tableEvt.Change,
+			Table:   tableEvt.Table,
+			Change:  tableEvt.Change,
+			payload: tableEvt.payload,
 		}
 
 		if len(tableEvt.Old) > 0 {
 			err := json.Unmarshal(tableEvt.Old, &evt.Old)
 			if err != nil {
-				return fmt.Errorf("table: %s: unmarshal old: %w", tableEvt.Table, err)
+				return callback(evt, fmt.Errorf("table: %s: unmarshal old: %w", tableEvt.Table, err))
 			}
 		}
 
 		if len(tableEvt.New) > 0 {
 			err := json.Unmarshal(tableEvt.New, &evt.New)
 			if err != nil {
-				return fmt.Errorf("table: %s: unmarshal old: %w", tableEvt.Table, err)
+				return callback(evt, fmt.Errorf("table: %s: unmarshal new: %w", tableEvt.Table, err))
 			}
 		}
 

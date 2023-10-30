@@ -37,11 +37,18 @@ type (
 
 		New T `json:"new"`
 		Old T `json:"old"`
+
+		payload string `json:"-"` /* just in case */
 	}
 
 	// TableNotificationJSON is the generic version of the TableNotification.
 	TableNotificationJSON = TableNotification[json.RawMessage]
 )
+
+// GetPayload returns the raw payload of the notification.
+func (tn TableNotification[T]) GetPayload() string {
+	return tn.payload
+}
 
 // ListenTable registers a function which notifies on the given "table" changes (INSERT, UPDATE, DELETE),
 // the subscribed postgres channel is named 'table_change_notifications'.
@@ -67,7 +74,11 @@ func (db *DB) ListenTable(ctx context.Context, table string, callback func(Table
 			SELECT json_build_object('table', TG_TABLE_NAME, 'change', TG_OP, 'old', OLD, 'new', NEW)::text
 			INTO payload;
 			PERFORM pg_notify(channel, payload);
-			RETURN NEW;
+			IF (TG_OP = 'DELETE') THEN
+				RETURN OLD;
+		  	ELSE
+				RETURN NEW;
+		  	END IF;
 		END; 
 		$$
 		LANGUAGE plpgsql;`, channelName)
@@ -84,7 +95,7 @@ func (db *DB) ListenTable(ctx context.Context, table string, callback func(Table
 	_, triggerCreated := db.tableChangeNotifyTriggerOnce[table]
 	db.tableChangeNotifyOnceMutex.RUnlock()
 	if !triggerCreated {
-		query := `CREATE TRIGGER ` + table + `_table_change_notify
+		query := `CREATE OR REPLACE TRIGGER ` + table + `_table_change_notify
         BEFORE INSERT OR
                UPDATE OR
                DELETE
@@ -124,6 +135,9 @@ func (db *DB) ListenTable(ctx context.Context, table string, callback func(Table
 				}
 			}
 
+			// make payload available for debugging on errors.
+			evt.payload = notification.Payload
+
 			if err = json.Unmarshal([]byte(notification.Payload), &evt); err != nil {
 				if callback(evt, err) != nil {
 					return
@@ -131,6 +145,7 @@ func (db *DB) ListenTable(ctx context.Context, table string, callback func(Table
 			}
 
 			if err = callback(evt, nil); err != nil {
+				//	callback(evt, err)
 				return
 			}
 		}
