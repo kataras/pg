@@ -3,6 +3,7 @@
 This folder contains some examples for the `PG` package.
 
 - [Basic](./basic/main.go)
+- [HTML5 Table Real-Time Database Table View](./live-table/main.go)
 - [Logging](./logging/main.go)
 - [Password](./password/main.go)
 - [Presenter](./presenter/main.go)
