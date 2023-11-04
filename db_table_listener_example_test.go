@@ -7,7 +7,7 @@ import (
 )
 
 func ExampleDB_ListenTable() {
-	db, err := openTestConnection()
+	db, err := openTestConnection(true)
 	if err != nil {
 		handleExampleError(err)
 		return
@@ -54,7 +54,7 @@ func ExampleDB_ListenTable() {
 		fmt.Println(err)
 		return
 	}
-	time.Sleep(5 * time.Second) // give it sometime to receive the notifications.
+	time.Sleep(8 * time.Second) // give it sometime to receive the notifications.
 	// Output:
 	// table: customers, event: INSERT, old: null
 	// table: customers, event: UPDATE

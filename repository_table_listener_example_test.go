@@ -7,7 +7,7 @@ import (
 )
 
 func ExampleRepository_ListenTable() {
-	db, err := openTestConnection()
+	db, err := openTestConnection(true)
 	if err != nil {
 		handleExampleError(err)
 		return
@@ -48,7 +48,7 @@ func ExampleRepository_ListenTable() {
 		fmt.Println(err)
 		return
 	}
-	time.Sleep(5 * time.Second) // give it sometime to receive the notifications.
+	time.Sleep(8 * time.Second) // give it sometime to receive the notifications.
 	// Output:
 	// table: customers, event: INSERT, old name:  new name: Makis
 	// table: customers, event: UPDATE, old name: Makis new name: Makis_UPDATED

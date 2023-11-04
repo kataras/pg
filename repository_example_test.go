@@ -97,7 +97,7 @@ func (r *Registry) BlogPosts() *Repository[BlogPost] {
 }
 
 func ExampleNewRepository() {
-	db, err := openTestConnection()
+	db, err := openTestConnection(true)
 	if err != nil {
 		handleExampleError(err)
 		return

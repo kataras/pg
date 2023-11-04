@@ -6,7 +6,7 @@ import (
 )
 
 func ExampleOpen() {
-	db, err := openTestConnection()
+	db, err := openTestConnection(true)
 	if err != nil {
 		handleExampleError(err)
 		return
@@ -16,7 +16,7 @@ func ExampleOpen() {
 	// Work with the database...
 }
 
-func openTestConnection() (*DB, error) {
+func openTestConnection(resetSchema bool) (*DB, error) {
 	// Database code.
 	schema := NewSchema()
 	schema.MustRegister("customers", Customer{})  // Register the Customer struct as a table named "customers".
@@ -30,17 +30,19 @@ func openTestConnection() (*DB, error) {
 	}
 	// Let the caller close the database connection pool: defer db.Close()
 
-	// Let's clear the schema, so we can run the tests even if already ran once in the past.
-	if err = db.DeleteSchema(context.Background()); err != nil { // DON'T DO THIS ON PRODUCTION.
-		return nil, fmt.Errorf("delete schema: %w", err)
-	}
+	if resetSchema {
+		// Let's clear the schema, so we can run the tests even if already ran once in the past.
+		if err = db.DeleteSchema(context.Background()); err != nil { // DON'T DO THIS ON PRODUCTION.
+			return nil, fmt.Errorf("delete schema: %w", err)
+		}
 
-	if err = db.CreateSchema(context.Background()); err != nil { // Create the schema in the database if it does not exist.
-		return nil, fmt.Errorf("create schema: %w", err)
-	}
+		if err = db.CreateSchema(context.Background()); err != nil { // Create the schema in the database if it does not exist.
+			return nil, fmt.Errorf("create schema: %w", err)
+		}
 
-	if err = db.CheckSchema(context.Background()); err != nil { // Check if the schema in the database matches the schema in the code.
-		return nil, fmt.Errorf("check schema: %w", err)
+		if err = db.CheckSchema(context.Background()); err != nil { // Check if the schema in the database matches the schema in the code.
+			return nil, fmt.Errorf("check schema: %w", err)
+		}
 	}
 
 	return db, nil
@@ -53,7 +55,7 @@ func openEmptyTestConnection() (*DB, error) { // without a schema.
 }
 
 func createTestConnectionSchema() error {
-	db, err := openTestConnection()
+	db, err := openTestConnection(true)
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,7 @@ import (
 // as the entities to be stored and manipulated in the database. It also prints "OK" if everything succeeds,
 // or an error message otherwise.
 func Example() {
-	db, err := openTestConnection()
+	db, err := openTestConnection(true)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
