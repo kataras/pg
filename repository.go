@@ -307,14 +307,21 @@ func (repo *Repository[T]) Duplicate(ctx context.Context, id any, newIDPtr any) 
 // The callback function can return any other error to stop the listener and return the error.
 // The callback function can return nil to continue listening.
 func (repo *Repository[T]) ListenTable(ctx context.Context, callback func(TableNotification[T], error) error) (Closer, error) {
-	return repo.db.ListenTable(ctx, repo.td.Name, func(tableEvt TableNotificationJSON, err error) error {
+	opts := &ListenTableOptions{
+		Tables: map[string][]TableChangeType{repo.td.Name: defaultChangesToWatch},
+	}
+	return repo.db.ListenTable(ctx, opts, func(tableEvt TableNotificationJSON, err error) error {
 		if err != nil {
-			failEvt := TableNotification[T]{
-				Table:  repo.td.Name,
-				Change: tableEvt.Change, // may empty.
+			if tableEvt.Table == repo.td.Name {
+				failEvt := TableNotification[T]{
+					Table:  repo.td.Name,
+					Change: tableEvt.Change, // may empty.
+				}
+
+				return callback(failEvt, err)
 			}
 
-			return callback(failEvt, err)
+			return err
 		}
 
 		evt := TableNotification[T]{

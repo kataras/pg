@@ -217,6 +217,8 @@ func main() {
 │  - UpsertSingle(ctx context.Context, uniqueIndex string, value T, destIdPtr any) error     │
 │                                                                                            │
 │  - Delete(ctx context.Context, values ...T) (int64, error)                                 │
+│                                                                                            │
+│  - ListenTable(ctx context.Context, cb func(notification, error) error) (Closer, error)    │
 └────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

@@ -21,7 +21,7 @@ Example of real-time database table to html5 table view using Go, Postgres, HTML
 1. Modify the connectionString variable to match your database connection string.
 2. Execute `go run main.go`
 3. Open a browser window at http://localhost:8080
-3.1 Open your database client and execute `INSERT INTO users (email, name, username) VALUES ('kataras2006@hotmail.com', 'Iris', 'iris');`
+3.1 Open your database client and execute `INSERT INTO users (email, name, username) VALUES ('john.doe@example.com', 'John Doe', 'johndoe');`
 3.2 Make any changes to the users table, e.g. insert new row, update and delete,
 4. See the changes in real-time in your browser window (HTML Table).
 */

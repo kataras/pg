@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/kataras/pg/desc"
 )
@@ -54,6 +55,15 @@ func ExampleDB_ListColumns() {
 		`[customers.email] pg:"name=email,type=varchar(255),unique_index=customer_unique_idx"`,
 		`[customers.name] pg:"name=name,type=varchar(255),index=btree"`,
 		`[customers.username] pg:"name=username,type=varchar(255),default=''::character varying"`, // before columns convert from struct field should match this.
+	}
+
+	if len(columns) != len(expectedTags) {
+		fmt.Printf("expected %d columns but got %d\n%s", len(expectedTags), len(columns), strings.Join(expectedTags, "\n"))
+		fmt.Println("\n=========")
+		for _, c := range columns {
+			fmt.Println(c.Name)
+		}
+		return
 	}
 
 	for i, column := range columns {

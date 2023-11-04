@@ -14,7 +14,10 @@ func ExampleDB_ListenTable() {
 	}
 	defer db.Close()
 
-	closer, err := db.ListenTable(context.Background(), "customers", func(evt TableNotificationJSON, err error) error {
+	opts := &ListenTableOptions{
+		Tables: map[string][]TableChangeType{"customers": defaultChangesToWatch},
+	}
+	closer, err := db.ListenTable(context.Background(), opts, func(evt TableNotificationJSON, err error) error {
 		if err != nil {
 			fmt.Printf("received error: %v\n", err)
 			return err
