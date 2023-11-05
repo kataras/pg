@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"sync/atomic"
 
@@ -234,7 +235,7 @@ func (db *DB) ListenTable(ctx context.Context, opts *ListenTableOptions, callbac
 
 			notification, err := conn.Accept(ctx)
 			if err != nil {
-				if errors.Is(err, io.ErrUnexpectedEOF) {
+				if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) {
 					return // may produced by close.
 				}
 

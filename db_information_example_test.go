@@ -16,7 +16,7 @@ func handleExampleError(err error) {
 }
 
 func ExampleDB_ListColumns() {
-	db, err := openTestConnection(false)
+	db, err := openTestConnection(true)
 	if err != nil {
 		handleExampleError(err)
 		return
