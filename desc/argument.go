@@ -3,6 +3,8 @@ package desc
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/jackc/pgx/v5/pgtype/zeronull"
 )
 
 // Argument represents a single argument for a database query
@@ -69,6 +71,7 @@ func extractArguments(td *Table, structValue reflect.Value, filter func(columnNa
 
 		fieldValue := field.Interface() // get the field value as an interface
 
+		// If filter passed, respect just the filter.
 		if filter != nil {
 			if !filter(c.Name) {
 				continue
@@ -83,7 +86,7 @@ func extractArguments(td *Table, structValue reflect.Value, filter func(columnNa
 			}
 		}
 
-		if c.Default != "" && c.Type == UUID && c.PrimaryKey && !c.Nullable {
+		if c.Default != "" && c.Type == UUID && !c.Nullable && c.PrimaryKey {
 			if isZero(fieldValue) {
 				continue // skip this field if it is a UUID primary key and required and the field value is zero
 			}
@@ -117,10 +120,10 @@ func extractArguments(td *Table, structValue reflect.Value, filter func(columnNa
 }
 
 // filterArguments takes a slice of arguments and a filter function and returns a slice of arguments.
-func filterArguments(args Arguments, filter func(arg Argument) bool) Arguments {
+func filterArguments(args Arguments, filter func(arg *Argument) bool) Arguments {
 	var filtered Arguments
 	for _, arg := range args {
-		if filter(arg) {
+		if filter(&arg) {
 			filtered = append(filtered, arg)
 		}
 	}
@@ -129,8 +132,19 @@ func filterArguments(args Arguments, filter func(arg Argument) bool) Arguments {
 
 // FilterArgumentsForInsert takes a slice of arguments and returns a slice of arguments for insert.
 func filterArgumentsForFullUpdate(args Arguments) Arguments {
-	return filterArguments(args, func(arg Argument) bool {
-		return !arg.Column.IsGenerated() && !arg.Column.Presenter // && !arg.Column.Unscannable
+	return filterArguments(args, func(arg *Argument) bool {
+		c := arg.Column
+
+		if (c.PrimaryKey || c.ReferenceColumnName != "") && c.Default != "" && c.Type == UUID && c.Nullable {
+			if isZero(arg.Value) { // fixes full update of a record which contains an optional reference UUID, we allow setting it to null, but
+				// we have to replace empty string with zeronull.UUID{}. Note that on insert we omit it from the query, as it will default to the default sql line default value.
+				arg.Value = zeronull.UUID{}
+			}
+
+			return true
+		}
+
+		return !c.IsGenerated() && !c.Presenter // && !arg.Column.Unscannable
 	})
 }
 
