@@ -144,9 +144,10 @@ func findScanTargets(dstElemValue reflect.Value, td *Table, fieldDescs []pgconn.
 			}
 		}
 
-		if col.Type == UUID && col.Nullable {
+		if col.Nullable && (col.Type == UUID ||
+			col.Type == Text || col.Type == CharacterVarying) /* Allow receive null on uuid, text and varchar columns even if the field is not a string pointer. */ {
 			scanTargets[i] = &nullableScanner{
-				uuidFieldPtr: dstElemValue.FieldByIndex(col.FieldIndex),
+				fieldPtr: dstElemValue.FieldByIndex(col.FieldIndex),
 			}
 
 			continue
@@ -164,15 +165,15 @@ type noOpScanner struct{}
 func (t *noOpScanner) Scan(src interface{}) error { return nil }
 
 type nullableScanner struct { // useful for UUIDs with null values.
-	uuidFieldPtr reflect.Value
+	fieldPtr reflect.Value
 }
 
 func (t *nullableScanner) Scan(src interface{}) error {
-	if src == nil {
+	if src == nil { // <- IMPORTANT.
 		return nil
 	}
 
-	t.uuidFieldPtr.Set(reflect.ValueOf(src))
+	t.fieldPtr.Set(reflect.ValueOf(src))
 
 	return nil
 }
