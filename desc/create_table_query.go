@@ -14,12 +14,9 @@ func BuildCreateTableQuery(td *Table) string {
 	// Start with the CREATE TABLE statement and the table name
 	query.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", td.Name))
 
+	columns := td.ListColumnsWithoutPresenter()
 	// Loop over the columns and append their definitions to the query
-	for i, col := range td.Columns {
-		if col.Presenter {
-			continue // skip presenter columns.
-		}
-
+	for i, col := range columns {
 		// Add the column name and type
 		query.WriteString(strconv.Quote(col.Name) + " " + col.Type.String())
 
@@ -46,8 +43,8 @@ func BuildCreateTableQuery(td *Table) string {
 			query.WriteString(fmt.Sprintf(" CHECK (%s)", col.CheckConstraint))
 		}
 
-		// Add a comma separator if this is not the last column
-		if i < len(td.Columns)-1 {
+		// Add a comma separator if this is not the last column.
+		if i < len(columns)-1 {
 			query.WriteString(", ")
 		}
 	}

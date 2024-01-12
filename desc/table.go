@@ -140,6 +140,20 @@ func (td *Table) listColumnsForSelectWithoutGenerated() []*Column {
 	return columns
 }
 
+// ListColumnsWithoutPresenter returns the columns of the table definition except the presenter ones.
+func (td *Table) ListColumnsWithoutPresenter() []*Column {
+	columns := make([]*Column, 0, len(td.Columns))
+	for _, c := range td.Columns {
+		if c.Presenter {
+			continue
+		}
+
+		columns = append(columns, c)
+	}
+
+	return columns
+}
+
 // ListColumnNames returns the column names of the table definition.
 func (td *Table) ListColumnNames() []string {
 	names := make([]string, 0, len(td.Columns))
