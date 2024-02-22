@@ -26,6 +26,7 @@ type (
 		OrdinalPosition int          // the position (starting from 1) of the corresponding column in the table.
 		FieldIndex      []int        // the index of the corresponding struct field
 		FieldType       reflect.Type // the reflect.Type of the corresponding struct field
+		isPtr           bool         // reprots whether FieldType.Kind() == reflect.Ptr.
 		/* if nil then wasn't able to resolve it by builtin method */
 		FieldName    string // the name of the corresponding struct field
 		TypeArgument string // an optional argument for the data type, e.g. 255 when Type is "varchar"

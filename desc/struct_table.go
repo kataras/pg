@@ -121,6 +121,7 @@ func convertStructFieldToColumnDefinion(tableName string, field reflect.StructFi
 		Type:       goTypeToDataType(field.Type),
 		FieldIndex: field.Index,
 		FieldType:  field.Type,
+		isPtr:      field.Type.Kind() == reflect.Ptr,
 		FieldName:  field.Name,
 	}
 

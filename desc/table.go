@@ -486,8 +486,12 @@ func (expressions Expressions) FilterTable(t *Table) bool {
 	t.FilterColumns(func(c *Column) bool {
 		for i, filter := range columnFilters {
 			if filter(c) {
-				c.FieldType = parsedExpressions[i].Data.(reflect.Type) // expressions[i].ResultFieldType // the indexes between expressions and column filters match.
-				break                                                  // stop on first filter match.
+				if typ := parsedExpressions[i].Data.(reflect.Type); typ != nil {
+					c.FieldType = typ // expressions[i].ResultFieldType // the indexes between expressions and column filters match.
+					c.isPtr = typ.Kind() == reflect.Ptr
+				}
+
+				break // stop on first filter match.
 			}
 		}
 

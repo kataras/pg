@@ -144,8 +144,9 @@ func findScanTargets(dstElemValue reflect.Value, td *Table, fieldDescs []pgconn.
 			}
 		}
 
-		if col.Nullable && (col.Type == UUID ||
-			col.Type == Text || col.Type == CharacterVarying) /* Allow receive null on uuid, text and varchar columns even if the field is not a string pointer. */ {
+		if !col.isPtr /* Edward report it, AI had a solution but this is a bit faster as the driver already handles pointers and nullables */ &&
+			col.Nullable &&
+			(col.Type == UUID || col.Type == Text || col.Type == CharacterVarying) { /* Allow receive null on uuid, text and varchar columns even if the field is not a string pointer. */
 			scanTargets[i] = &nullableScanner{
 				fieldPtr: dstElemValue.FieldByIndex(col.FieldIndex),
 			}

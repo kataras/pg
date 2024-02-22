@@ -1,5 +1,7 @@
 package desc
 
+import "reflect"
+
 // ColumnBasicInfo represents a basic column information, contains the table name, column name, ordinal position, column default value,
 // data type, data type argument, whether the column is nullable, whether the column is identity and whether the column is generated.
 type ColumnBasicInfo struct {
@@ -36,7 +38,11 @@ func (c *ColumnBasicInfo) BuildColumn(column *Column) error {
 
 	column.FieldIndex = []int{c.OrdinalPosition}
 	column.FieldName = ToStructFieldName(c.Name)
-	column.FieldType = c.DataType.GoType()
+
+	if typ := c.DataType.GoType(); typ != nil {
+		column.FieldType = typ
+		column.isPtr = typ.Kind() == reflect.Ptr
+	}
 
 	return nil
 }
