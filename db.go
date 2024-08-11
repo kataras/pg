@@ -298,6 +298,32 @@ func (db *DB) Begin(ctx context.Context) (*DB, error) {
 	return txDB, nil     // return the cloned DB instance and nil as no error occurred
 }
 
+// BeginConcurrent starts a new database transaction and returns a new DB instance that operates within that transaction.
+// It uses the same connection as the parent DB instance.
+// It is useful when you want to execute multiple queries concurrently within the same transaction.
+// This helps to avoid the "conn busy" errors when trying to read from a query while waiting for the previous one in the same connection.
+// Note that a PostgreSQL connection executes statements serially. You can't concurrently send queries to the same connection.
+// There is no way to have multiple concurrent writers to the same transaction natively.
+func (db *DB) BeginConcurrent(ctx context.Context) (*DB, error) {
+	var (
+		tx  pgx.Tx // a variable to store the transaction instance
+		err error  // a variable to store any error
+	)
+	if db.tx != nil {
+		// If the DB instance already has a transaction, start a nested transaction using db.tx.Begin
+		tx, err = db.tx.Begin(ctx)
+	} else {
+		// Otherwise, start a new concurrent transaction using db.Pool with the default transaction options.
+		tx, err = NewConcurrentTx(ctx, db.Pool)
+	}
+	if err != nil {
+		return nil, err // return nil and the wrapped error if starting the transaction fails
+	}
+
+	txDB := db.clone(tx) // clone the DB instance and assign the transaction instance to its tx field
+	return txDB, nil     // return the cloned DB instance and nil as no error occurred
+}
+
 // Rollback rolls back the current database transaction and returns any error that occurs.
 func (db *DB) Rollback(ctx context.Context) error {
 	if db.dbTxClosed {
