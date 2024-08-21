@@ -1,6 +1,6 @@
 module github.com/kataras/pg
 
-go 1.22
+go 1.23
 
 require (
 	github.com/gertd/go-pluralize v0.2.1

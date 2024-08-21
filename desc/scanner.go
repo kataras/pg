@@ -74,6 +74,7 @@ func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr interface{}) error {
 	// var value T
 	// get the reflect value of the result variable
 	dstElemValue := reflect.ValueOf(valuePtr).Elem()
+
 	// find the scan targets for each column in the row
 	scanTargets, err := findScanTargets(dstElemValue, td, rows.FieldDescriptions())
 	if err != nil {
@@ -94,16 +95,20 @@ func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr interface{}) error {
 		// Help developer to find what field was errored:
 		var scanArgErr pgx.ScanArgError
 		if errors.As(err, &scanArgErr) {
-			if len(td.Columns) > scanArgErr.ColumnIndex {
-				col := td.Columns[scanArgErr.ColumnIndex]
-				// NOTE: this index may be invalid if the struct contains different order of the column in database,
-				// the only one option is to use the col's OrdinalPosition (starting from 1, where scanArgErr.ColumnIndex starts from 0)
-				// but OrdinalPosition is set only when CheckSchema method was called previously.
-				destColumnName := col.Name
-				err = fmt.Errorf("%w: field: %s.%s (%s): column: %s.%s",
-					err,
-					col.Table.StructName, col.FieldName, col.FieldType.String(),
-					col.TableName, destColumnName)
+			// scanArgErr.ColumnIndex is the index of the column in the row data.
+			// NOTE: that ^ index may be invalid if the struct contains different order of the column in database,
+			// the only one option is to use the col's OrdinalPosition (starting from 1, where scanArgErr.ColumnIndex starts from 0)
+			// but OrdinalPosition is set only when CheckSchema method was called previously.
+			if fieldDescs := rows.FieldDescriptions(); len(fieldDescs) > scanArgErr.ColumnIndex {
+				colName := rows.FieldDescriptions()[scanArgErr.ColumnIndex].Name
+				col := td.GetColumnByName(colName)
+				if col != nil {
+					destColumnName := col.Name
+					err = fmt.Errorf("%w: field: %s.%s (type: %s): column: %s.%s",
+						err,
+						col.Table.StructName, col.FieldName, col.FieldType.String(),
+						col.TableName, destColumnName)
+				}
 			}
 		}
 
