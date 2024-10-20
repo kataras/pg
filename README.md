@@ -274,7 +274,7 @@ func main() {
 | TsVector | tsvector |
 | TxIDSnapshot | txid_snapshot |
 | UUID | uuid |
-| UUIDArray | []uuid |
+| UUIDArray | uuid[] |
 | XML | xml |
 | Int4Range | int4range |
 | Int4MultiRange | int4multirange |

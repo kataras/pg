@@ -154,10 +154,23 @@ func (td *Table) ListColumnsWithoutPresenter() []*Column {
 	return columns
 }
 
-// ListColumnNames returns the column names of the table definition.
+// ListColumnNames returns all the column names of the table definition, including presenters.
 func (td *Table) ListColumnNames() []string {
 	names := make([]string, 0, len(td.Columns))
 	for _, c := range td.Columns {
+		names = append(names, c.Name)
+	}
+
+	return names
+}
+
+// ListColumnNamesWithoutPresenter returns the column names of the table definition.
+func (td *Table) ListColumnNamesWithoutPresenter() []string {
+	names := make([]string, 0, len(td.Columns))
+	for _, c := range td.Columns {
+		if c.Presenter {
+			continue
+		}
 		names = append(names, c.Name)
 	}
 
