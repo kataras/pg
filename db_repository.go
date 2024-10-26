@@ -214,6 +214,22 @@ func (db *DB) insertTableRecord(ctx context.Context, td *desc.Table, structValue
 	return nil
 }
 
+// Mutate executes a query that modifies the database and returns the number of rows affected.
+func (db *DB) Mutate(ctx context.Context, query string, args ...any) (int64, error) {
+	tag, err := db.Exec(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+
+	return tag.RowsAffected(), nil
+}
+
+// MutateSingle executes a query that modifies the database and returns true if at least one row was affected.
+func (db *DB) MutateSingle(ctx context.Context, query string, args ...any) (bool, error) {
+	rowsAffected, err := db.Mutate(ctx, query, args...)
+	return rowsAffected > 0, err
+}
+
 // Delete deletes one or more values from the database by building and executing an
 // SQL query based on the values and the table definition.
 func (db *DB) Delete(ctx context.Context, values ...any) (int64, error) {

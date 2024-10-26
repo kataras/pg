@@ -68,6 +68,16 @@ func (repo *Repository[T]) Exec(ctx context.Context, query string, args ...any) 
 	return repo.db.Exec(ctx, query, args...)
 }
 
+// Mutate executes a query that returns the number of affected rows and returns it and an error.
+func (repo *Repository[T]) Mutate(ctx context.Context, query string, args ...any) (int64, error) {
+	return repo.db.Mutate(ctx, query, args...)
+}
+
+// MutateSingle executes a query that modifies the database and returns true if at least one row was affected.
+func (repo *Repository[T]) MutateSingle(ctx context.Context, query string, args ...any) (bool, error) {
+	return repo.db.MutateSingle(ctx, query, args...)
+}
+
 // === //
 
 // InTransaction runs a function within a database transaction and commits or
