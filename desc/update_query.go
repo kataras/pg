@@ -8,7 +8,7 @@ import (
 
 // BuildUpdateQuery builds and returns an SQL query for updating a row in the table,
 // using the given struct value and the primary key.
-func BuildUpdateQuery(value any, columnsToUpdate []string, primaryKey *Column) (string, []any, error) {
+func BuildUpdateQuery(value any, columnsToUpdate []string, reportNotFound bool, primaryKey *Column) (string, []any, error) {
 	args, err := extractUpdateArguments(value, columnsToUpdate, primaryKey)
 	if err != nil {
 		return "", nil, err
@@ -27,7 +27,7 @@ func BuildUpdateQuery(value any, columnsToUpdate []string, primaryKey *Column) (
 	}
 
 	// build the SQL query using the table definition and its primary key.
-	query := buildUpdateQuery(primaryKey.Table, args, primaryKey.Name, shouldUpdateID)
+	query := buildUpdateQuery(primaryKey.Table, args, primaryKey.Name, shouldUpdateID, reportNotFound)
 	return query, args.Values(), nil
 }
 
@@ -81,7 +81,7 @@ func extractUpdateArguments(value any, columnsToUpdate []string, primaryKey *Col
 	return args, nil
 }
 
-func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUpdateID bool) string {
+func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUpdateID bool, reportNotFound bool) string {
 	var b strings.Builder
 
 	b.WriteString(`UPDATE "` + td.Name + `" SET `)
@@ -121,6 +121,10 @@ func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUp
 		primaryKeyWhereIndex = paramIndex
 	}
 	b.WriteString(` WHERE "` + primaryKeyName + `" = $` + strconv.Itoa(primaryKeyWhereIndex))
+
+	if reportNotFound {
+		b.WriteString(` RETURNING "` + primaryKeyName + `"`)
+	}
 
 	b.WriteByte(';')
 

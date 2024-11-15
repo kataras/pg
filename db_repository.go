@@ -298,7 +298,7 @@ func (db *DB) UpdateExceptColumns(ctx context.Context, columnsToExcept []string,
 	}
 
 	columnsToUpdate := td.ListColumnNamesExcept(columnsToExcept...)
-	return db.updateTableRecords(ctx, td, columnsToUpdate, values)
+	return db.updateTableRecords(ctx, td, columnsToUpdate, false, values)
 }
 
 // UpdateOnlyColumns updates one or more values in the database by building and executing an
@@ -315,17 +315,17 @@ func (db *DB) UpdateOnlyColumns(ctx context.Context, columnsToUpdate []string, v
 		return 0, err // return the error if the table definition is not found
 	}
 
-	return db.updateTableRecords(ctx, td, columnsToUpdate, values)
+	return db.updateTableRecords(ctx, td, columnsToUpdate, false, values)
 }
 
-func (db *DB) updateTableRecords(ctx context.Context, td *desc.Table, columnsToUpdate []string, values []any) (int64, error) {
+func (db *DB) updateTableRecords(ctx context.Context, td *desc.Table, columnsToUpdate []string, reportNotFound bool, values []any) (int64, error) {
 	primaryKey, ok := td.PrimaryKey()
 	if !ok {
 		return 0, fmt.Errorf("no primary key found in table definition: %s", td.Name)
 	}
 
 	if len(values) == 1 {
-		return db.updateTableRecord(ctx, values[0], columnsToUpdate, primaryKey)
+		return db.updateTableRecord(ctx, values[0], columnsToUpdate, reportNotFound, primaryKey)
 	}
 
 	// if more than one: update each value inside a transaction.
@@ -333,7 +333,7 @@ func (db *DB) updateTableRecords(ctx context.Context, td *desc.Table, columnsToU
 
 	err := db.InTransaction(ctx, func(db *DB) error {
 		for _, value := range values {
-			rowsAffected, err := db.updateTableRecord(ctx, value, columnsToUpdate, primaryKey)
+			rowsAffected, err := db.updateTableRecord(ctx, value, columnsToUpdate, reportNotFound, primaryKey)
 			if err != nil {
 				return err
 			}
@@ -350,11 +350,20 @@ func (db *DB) updateTableRecords(ctx context.Context, td *desc.Table, columnsToU
 	return totalRowsAffected, nil
 }
 
-func (db *DB) updateTableRecord(ctx context.Context, value any, columnsToUpdate []string, primaryKey *desc.Column) (int64, error) {
+func (db *DB) updateTableRecord(ctx context.Context, value any, columnsToUpdate []string, reportNotFound bool, primaryKey *desc.Column) (int64, error) {
 	// build the SQL query and arguments using the table definition and its primary key.
-	query, args, err := desc.BuildUpdateQuery(value, columnsToUpdate, primaryKey)
+	query, args, err := desc.BuildUpdateQuery(value, columnsToUpdate, reportNotFound, primaryKey)
 	if err != nil {
 		return 0, err
+	}
+
+	if reportNotFound {
+		scanErr := db.QueryRow(ctx, query, args...).Scan(nil)
+		if scanErr != nil {
+			return 0, scanErr
+		}
+
+		return 1, nil
 	}
 
 	// execute the query using db.Exec and pass in the primary key values as a parameter

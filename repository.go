@@ -289,7 +289,31 @@ func (repo *Repository[T]) UpdateOnlyColumns(ctx context.Context, columnsToUpdat
 	}
 
 	valuesAsInterfaces := toInterfaces(values)
-	return repo.db.updateTableRecords(ctx, repo.td, columnsToUpdate, valuesAsInterfaces)
+	return repo.db.updateTableRecords(ctx, repo.td, columnsToUpdate, false, valuesAsInterfaces)
+}
+
+// UpdateOnlyColumnsReportNoRows updates one or more values of type T in the database by their primary key values.
+// It returns an ErrNoRows if there is no matching row on the given criteria.
+func (repo *Repository[T]) UpdateOnlyColumnsReportNoRows(ctx context.Context, columnsToUpdate []string, values ...T) (bool, error) {
+	if repo.IsReadOnly() {
+		return false, ErrIsReadOnly
+	}
+
+	if len(values) == 0 {
+		return false, nil
+	}
+
+	valuesAsInterfaces := toInterfaces(values)
+	_, err := repo.db.updateTableRecords(ctx, repo.td, columnsToUpdate, true, valuesAsInterfaces)
+	if err != nil {
+		if errors.Is(err, ErrNoRows) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
 }
 
 func toInterfaces[T any](values []T) []any {

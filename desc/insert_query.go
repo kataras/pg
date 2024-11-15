@@ -18,7 +18,7 @@ func BuildInsertQuery(td *Table, structValue reflect.Value, idPtr any, forceOnCo
 	if idPtr != nil {
 		// if idPtr is not nil, it means we want to get the primary key value of the inserted row
 		columnDefinition, ok := td.PrimaryKey() // get the primary key column definition from the table definition
-		if ok && idPtr != nil {
+		if ok {
 			returningColumn = columnDefinition.Name // assign the column name to returningColumn
 		}
 	}
