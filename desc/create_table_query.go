@@ -49,7 +49,7 @@ func BuildCreateTableQuery(td *Table) string {
 		}
 	}
 
-	// Add the primary key constraint if any
+	// Add the primary key constraint if any. We only allow one Primary Key column.
 	if primaryKey, ok := td.PrimaryKey(); ok {
 		query.WriteString(fmt.Sprintf(`, PRIMARY KEY ("%s")`, primaryKey.Name))
 	}

@@ -177,7 +177,7 @@ tablesLoop:
 		for _, column := range td.Columns {
 			if !setTimestampTriggerCreated {
 				if column.Name == db.schema.UpdatedAtColumnName && column.Type.IsTime() {
-					if !setTimestampFunctionCreated { // global function.
+					if !setTimestampFunctionCreated { // global function, register once for all tables.
 						b.WriteString(createSetTimestampFunctionQuery)
 						setTimestampFunctionCreated = true
 					}
