@@ -135,9 +135,6 @@ func (c *Constraint) BuildColumn(column *Column) error {
 	case CheckConstraintType:
 		column.CheckConstraint = c.Check.Expression
 	case ForeignKeyConstraintType:
-		if c.ForeignKey == nil {
-			return fmt.Errorf("foreign key constraint is nil")
-		}
 		column.ReferenceTableName = c.ForeignKey.ReferenceTableName
 		column.ReferenceColumnName = c.ForeignKey.ReferenceColumnName
 		column.ReferenceOnDelete = c.ForeignKey.OnDelete
