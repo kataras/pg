@@ -233,7 +233,7 @@ type ForeignKeyConstraint struct {
 }
 
 // Compile the regular expression pattern into a regular expression instance
-var foreignKeyConstraintRegex = regexp.MustCompile(`^FOREIGN KEY\s*\((\w+)\)\s*REFERENCES\s*(\w+)\((\w+)\)(?:\s*ON DELETE\s*([A-Za-z]+\s*[A-Za-z]*))?(?:\s*DEFERRABLE)?$`)
+var foreignKeyConstraintRegex = regexp.MustCompile(`^FOREIGN KEY\s*\((\w+)\)\s*REFERENCES\s*(\w+)\((\w+)\)(?:\s*ON DELETE\s*([A-Za-z]+\s*[A-Za-z]*))?(?:\s*(DEFERRABLE))?$`)
 
 // parseForeignKeyConstraint parses a foreign key constraint definition.
 func parseForeignKeyConstraint(constraintDefinition string) *ForeignKeyConstraint {
