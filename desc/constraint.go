@@ -255,7 +255,7 @@ func parseForeignKeyConstraint(constraintDefinition string) *ForeignKeyConstrain
 
 	// If there is a fifth match and it is not empty, assign it to onDelete
 	if len(matches) > 4 && matches[4] != "" {
-		onDelete = matches[4] // Directly use the captured ON DELETE action
+		onDelete = strings.TrimSpace(matches[4]) // Trim any extra spaces
 	}
 
 	// If there is a sixth match and it is not empty, assign it to deferrable
