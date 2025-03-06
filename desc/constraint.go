@@ -239,7 +239,7 @@ var foreignKeyConstraintRegex = regexp.MustCompile(`^FOREIGN KEY\s*\((\w+)\)\s*R
 func parseForeignKeyConstraint(constraintDefinition string) *ForeignKeyConstraint {
 	// Use the regular expression instance to match against the SQL result line and extract the relevant parts
 	matches := foreignKeyConstraintRegex.FindStringSubmatch(constraintDefinition)
-	// If there are less than 3 matches, skip this row as it is not a valid foreign key definition
+	// If there are less than 4 matches, skip this row as it is not a valid foreign key definition
 	if len(matches) < 4 { // At least 4 groups are expected: full match, column, table, ref column
 		return nil
 	}
