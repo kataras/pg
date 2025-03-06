@@ -233,14 +233,14 @@ type ForeignKeyConstraint struct {
 }
 
 // Compile the regular expression pattern into a regular expression instance
-var foreignKeyConstraintRegex = regexp.MustCompile(`^FOREIGN KEY \((\w+)\) REFERENCES (\w+)\((\w+)\)( ON DELETE (\w+))?( DEFERRABLE)?$`)
+var foreignKeyConstraintRegex = regexp.MustCompile(`^FOREIGN KEY\s*\((\w+)\)\s*REFERENCES\s*(\w+)\((\w+)\)(?:\s*ON DELETE\s*([A-Za-z]+\s*[A-Za-z]*))?(?:\s*(DEFERRABLE))?$`)
 
 // parseForeignKeyConstraint parses a foreign key constraint definition.
 func parseForeignKeyConstraint(constraintDefinition string) *ForeignKeyConstraint {
 	// Use the regular expression instance to match against the SQL result line and extract the relevant parts
 	matches := foreignKeyConstraintRegex.FindStringSubmatch(constraintDefinition)
-	// If there are less than 3 matches, skip this row as it is not a valid foreign key definition
-	if len(matches) < 3 {
+	// If there are less than 4 matches, skip this row as it is not a valid foreign key definition
+	if len(matches) < 4 { // At least 4 groups are expected: full match, column, table, ref column
 		return nil
 	}
 
@@ -253,16 +253,14 @@ func parseForeignKeyConstraint(constraintDefinition string) *ForeignKeyConstrain
 		deferrable    bool         // whether the constraint is deferrable or not (optional)
 	)
 
-	// If there is a fourth match and it is not empty, assign it to onDelete
-	if len(matches) > 3 && matches[4] != "" {
-		onDeleteInputs := strings.Split(matches[4], " ") //  ON DELETE CASCADE
-		onDelete = onDeleteInputs[len(onDeleteInputs)-1] // we need the "CASCADE" part only.
+	// If there is a fifth match and it is not empty, assign it to onDelete
+	if len(matches) > 4 && matches[4] != "" {
+		onDelete = strings.TrimSpace(matches[4]) // Trim any extra spaces
 	}
 
-	// If there is a sixth match and it is not empty, assign it to deferrable after trimming any whitespace and checking
-	// if it equals "DEFERRABLE"
-	if len(matches) > 5 && matches[6] != "" {
-		deferrable = strings.TrimSpace(matches[6]) == "DEFERRABLE"
+	// If there is a sixth match and it is not empty, assign it to deferrable
+	if len(matches) > 5 && matches[5] != "" {
+		deferrable = strings.TrimSpace(matches[5]) == "DEFERRABLE"
 	}
 
 	return &ForeignKeyConstraint{
