@@ -215,61 +215,89 @@ func parseCheckConstraint(constraintDefinition string) *CheckConstraint {
 	}
 }
 
-// ForeignKeyConstraint is a type that represents a foreign key definition for a column.
-// A foreign key is a constraint that establishes a link between two tables based on a column or a set of columns.
-// A foreign key can have different options for handling the deletion or update of the referenced row,
-// such as cascade, restrict, set null, etc. A foreign key can also be deferrable, meaning that the constraint
-// can be checked at the end of a transaction instead of immediately.
+// ForeignKeyConstraint represents a foreign key definition for a column.
+//
+// A foreign key establishes a link between two tables based on a column or a set of columns.
+// It may specify actions to be taken when the referenced row is deleted or updated,
+// such as CASCADE, RESTRICT, NO ACTION, SET NULL, or SET DEFAULT.
+// The constraint can also be marked as deferrable, meaning that its verification can be postponed until
+// the end of a transaction rather than being checked immediately.
 type ForeignKeyConstraint struct {
-	// the name of the column that references another table,
-	// this is the same as the column name of the Constraint type but
-	// it's here because we use this type internally and solo as well.
-	ColumnName string
-
-	ReferenceTableName  string // the name of the table that is referenced by the foreign key
-	ReferenceColumnName string // the name of the column that is referenced by the foreign key
-	OnDelete            string // the action to take when the referenced row is deleted
-	Deferrable          bool   // whether the foreign key constraint is deferrable or not
+	ColumnName          string // The column that holds the foreign key.
+	ReferenceTableName  string // The table that is referenced.
+	ReferenceColumnName string // The column in the referenced table.
+	OnDelete            string // Action to take when the referenced row is deleted.
+	OnUpdate            string // Action to take when the referenced row is updated.
+	Deferrable          bool   // Whether the constraint is deferrable.
 }
 
-// Compile the regular expression pattern into a regular expression instance
-var foreignKeyConstraintRegex = regexp.MustCompile(`^FOREIGN KEY \((\w+)\) REFERENCES (\w+)\((\w+)\)( ON DELETE (\w+))?( DEFERRABLE)?$`)
+// foreignKeyConstraintRegex is a compiled regular expression that matches PostgreSQL foreign key constraint definitions.
+//
+// The regex supports definitions with optional ON DELETE and ON UPDATE clauses, as well as an optional DEFERRABLE flag.
+// It expects the definition to follow this format (case-insensitive):
+//
+//	FOREIGN KEY (column_name) REFERENCES table_name (reference_column)
+//	  [ON DELETE {CASCADE | RESTRICT | NO ACTION | SET NULL | SET DEFAULT}]
+//	  [ON UPDATE {CASCADE | RESTRICT | NO ACTION | SET NULL | SET DEFAULT}]
+//	  [DEFERRABLE]
+//
+// The regular expression explicitly lists the allowed actions for the ON DELETE and ON UPDATE clauses.
+var foreignKeyConstraintRegex = regexp.MustCompile(
+	`(?i)^FOREIGN KEY\s*\((\w+)\)\s*REFERENCES\s*(\w+)\s*\((\w+)\)` +
+		`(?:\s+ON DELETE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT))?` +
+		`(?:\s+ON UPDATE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT))?` +
+		`(?:\s+(DEFERRABLE))?$`)
 
-// parseForeignKeyConstraint parses a foreign key constraint definition.
+// parseForeignKeyConstraint parses a foreign key constraint definition from a SQL statement.
+//
+// It extracts the column name, referenced table and column, as well as the optional ON DELETE and ON UPDATE actions,
+// and checks whether the constraint is defined as deferrable.
+//
+// Parameters:
+//   - constraintDefinition: A string containing the SQL foreign key constraint definition.
+//
+// Returns:
+//   - A pointer to a ForeignKeyConstraint populated with the parsed values,
+//     or nil if the constraintDefinition does not match the expected format.
 func parseForeignKeyConstraint(constraintDefinition string) *ForeignKeyConstraint {
-	// Use the regular expression instance to match against the SQL result line and extract the relevant parts
+	// Attempt to match the provided constraint definition against the compiled regex.
 	matches := foreignKeyConstraintRegex.FindStringSubmatch(constraintDefinition)
-	// If there are less than 3 matches, skip this row as it is not a valid foreign key definition
-	if len(matches) < 3 {
+	// Verify that at least the first 4 groups are present: full match, column name, referenced table, and referenced column.
+	if len(matches) < 4 {
 		return nil
 	}
 
-	// Assign each match to a variable with a descriptive name
-	var (
-		columnName    = matches[1] // the column name that references another table
-		refTableName  = matches[2] // the referenced table name
-		refColumnName = matches[3] // the referenced column name
-		onDelete      string       // the action to take on delete (optional)
-		deferrable    bool         // whether the constraint is deferrable or not (optional)
-	)
+	// Extract the necessary components from the regex match groups.
+	columnName := matches[1]    // The foreign key column in the current table.
+	refTableName := matches[2]  // The referenced table name.
+	refColumnName := matches[3] // The referenced column in the referenced table.
 
-	// If there is a fourth match and it is not empty, assign it to onDelete
-	if len(matches) > 3 && matches[4] != "" {
-		onDeleteInputs := strings.Split(matches[4], " ") //  ON DELETE CASCADE
-		onDelete = onDeleteInputs[len(onDeleteInputs)-1] // we need the "CASCADE" part only.
+	// Group 4: Optional ON DELETE action.
+	onDelete := ""
+	if len(matches) > 4 && matches[4] != "" {
+		onDelete = strings.TrimSpace(matches[4])
 	}
 
-	// If there is a sixth match and it is not empty, assign it to deferrable after trimming any whitespace and checking
-	// if it equals "DEFERRABLE"
-	if len(matches) > 5 && matches[6] != "" {
-		deferrable = strings.TrimSpace(matches[6]) == "DEFERRABLE"
+	// Group 5: Optional ON UPDATE action.
+	onUpdate := ""
+	if len(matches) > 5 && matches[5] != "" {
+		onUpdate = strings.TrimSpace(matches[5])
 	}
 
+	// Group 6: Optional DEFERRABLE flag.
+	deferrable := false
+	if len(matches) > 6 && matches[6] != "" {
+		// Use a case-insensitive comparison to check if the matched string is "DEFERRABLE"
+		deferrable = strings.EqualFold(strings.TrimSpace(matches[6]), "DEFERRABLE")
+	}
+
+	// Return the parsed foreign key constraint.
 	return &ForeignKeyConstraint{
 		ColumnName:          columnName,
 		ReferenceTableName:  refTableName,
 		ReferenceColumnName: refColumnName,
 		OnDelete:            onDelete,
+		OnUpdate:            onUpdate,
 		Deferrable:          deferrable,
 	}
 }
