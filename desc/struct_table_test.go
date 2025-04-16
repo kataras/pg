@@ -22,6 +22,7 @@ func TestParseReferenceTagValue(t *testing.T) {
 		{"blogs(id cascade)", "blogs", "id", "CASCADE", false, nil},
 		{"blogs(id set null deferrable)", "blogs", "id", "SET NULL", true, nil},
 		{"blogs(id set default)", "blogs", "id", "SET DEFAULT", false, nil},
+		{"users(id no action deferrable)", "users", "id", "NO ACTION", true, nil},
 		// Invalid cases.
 		{"blogs(id foo)", "", "", "", false, errInvalidReferenceTag},
 		{"blogs(id restrict deferrable)", "", "", "", false, errInvalidReferenceTag},

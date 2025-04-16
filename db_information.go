@@ -557,7 +557,28 @@ func (db *DB) ListConstraints(ctx context.Context, tableNames ...string) ([]*des
     a.attname AS column_name,
     con.conname AS constraint_name,
     con.contype AS constraint_type,
-    pg_get_constraintdef(con.oid) AS constraint_definition,
+    pg_get_constraintdef(con.oid, true) ||
+      CASE WHEN con.contype = 'f' THEN
+        COALESCE(
+          CASE con.confdeltype
+            WHEN 'a' THEN ' ON DELETE NO ACTION'
+            WHEN 'r' THEN ' ON DELETE RESTRICT'
+            WHEN 'c' THEN ' ON DELETE CASCADE'
+            WHEN 'n' THEN ' ON DELETE SET NULL'
+            WHEN 'd' THEN ' ON DELETE SET DEFAULT'
+            ELSE ''
+          END, '') ||
+        COALESCE(
+          CASE con.confupdtype
+            WHEN 'a' THEN ' ON UPDATE NO ACTION'
+            WHEN 'r' THEN ' ON UPDATE RESTRICT'
+            WHEN 'c' THEN ' ON UPDATE CASCADE'
+            WHEN 'n' THEN ' ON UPDATE SET NULL'
+            WHEN 'd' THEN ' ON UPDATE SET DEFAULT'
+            ELSE ''
+          END, '')
+      ELSE ''
+      END AS constraint_definition,
     COALESCE(am.amname, '') AS index_type
 FROM
     pg_catalog.pg_class cl
@@ -566,7 +587,7 @@ JOIN
 JOIN
     pg_catalog.pg_attribute a ON a.attrelid = cl.oid
 JOIN
-    pg_catalog.pg_constraint con ON con.conrelid = cl.oid AND a.attnum = ANY (con.conkey)
+    pg_catalog.pg_constraint con ON con.conrelid = cl.oid AND a.attnum = ANY(con.conkey)
 LEFT JOIN
     pg_catalog.pg_index idx ON idx.indrelid = cl.oid AND idx.indexrelid = con.conindid
 LEFT JOIN
@@ -576,9 +597,7 @@ LEFT JOIN
 WHERE
     n.nspname = $1 AND
     ( CARDINALITY($2::varchar[]) = 0 OR cl.relname = ANY($2::varchar[]) )
--- 	ORDER BY
---   cl.relname,
---   a.attnum
+
 UNION ALL
 
 SELECT
@@ -592,8 +611,8 @@ FROM
     pg_indexes i
 WHERE
     schemaname = $1 AND
-    ( CARDINALITY($2::varchar[]) = 0 OR tablename = ANY($2::varchar[]) ) AND
-    indexdef NOT LIKE '%UNIQUE%' -- don't collect unique indexes here, they are (or should be) collected in the first part of the query OR by the ListUniqueIndexes.
+    ( CARDINALITY($2::varchar[]) = 0 OR tablename = ANY($2::varchar[]) )
+    AND indexdef NOT LIKE '%UNIQUE%'
 ORDER BY table_name, column_name;`
 
 	/*

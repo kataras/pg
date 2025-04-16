@@ -231,23 +231,6 @@ type ForeignKeyConstraint struct {
 	Deferrable          bool   // Whether the constraint is deferrable.
 }
 
-// foreignKeyConstraintRegex is a compiled regular expression that matches PostgreSQL foreign key constraint definitions.
-//
-// The regex supports definitions with optional ON DELETE and ON UPDATE clauses, as well as an optional DEFERRABLE flag.
-// It expects the definition to follow this format (case-insensitive):
-//
-//	FOREIGN KEY (column_name) REFERENCES table_name (reference_column)
-//	  [ON DELETE {CASCADE | RESTRICT | NO ACTION | SET NULL | SET DEFAULT}]
-//	  [ON UPDATE {CASCADE | RESTRICT | NO ACTION | SET NULL | SET DEFAULT}]
-//	  [DEFERRABLE]
-//
-// The regular expression explicitly lists the allowed actions for the ON DELETE and ON UPDATE clauses.
-var foreignKeyConstraintRegex = regexp.MustCompile(
-	`(?i)^FOREIGN KEY\s*\((\w+)\)\s*REFERENCES\s*(\w+)\s*\((\w+)\)` +
-		`(?:\s+ON DELETE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT))?` +
-		`(?:\s+ON UPDATE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT))?` +
-		`(?:\s+(DEFERRABLE))?$`)
-
 // parseForeignKeyConstraint parses a foreign key constraint definition from a SQL statement.
 //
 // It extracts the column name, referenced table and column, as well as the optional ON DELETE and ON UPDATE actions,
@@ -260,38 +243,41 @@ var foreignKeyConstraintRegex = regexp.MustCompile(
 //   - A pointer to a ForeignKeyConstraint populated with the parsed values,
 //     or nil if the constraintDefinition does not match the expected format.
 func parseForeignKeyConstraint(constraintDefinition string) *ForeignKeyConstraint {
-	// Attempt to match the provided constraint definition against the compiled regex.
-	matches := foreignKeyConstraintRegex.FindStringSubmatch(constraintDefinition)
-	// Verify that at least the first 4 groups are present: full match, column name, referenced table, and referenced column.
-	if len(matches) < 4 {
+	// First, capture the mandatory part of the definition and the rest.
+	// We don't rely on the order of the clauses, so we use a regex to find the base definition,
+	// and then we'll look for the optional clauses.
+	baseRegex := regexp.MustCompile(`(?i)^FOREIGN KEY\s*\((\w+)\)\s*REFERENCES\s*(\w+)\s*\((\w+)\)(.*)$`)
+	matches := baseRegex.FindStringSubmatch(constraintDefinition)
+	if len(matches) < 5 {
 		return nil
 	}
 
-	// Extract the necessary components from the regex match groups.
-	columnName := matches[1]    // The foreign key column in the current table.
-	refTableName := matches[2]  // The referenced table name.
-	refColumnName := matches[3] // The referenced column in the referenced table.
+	columnName := matches[1]
+	refTableName := matches[2]
+	refColumnName := matches[3]
+	rest := matches[4]
 
-	// Group 4: Optional ON DELETE action.
 	onDelete := ""
-	if len(matches) > 4 && matches[4] != "" {
-		onDelete = strings.TrimSpace(matches[4])
-	}
-
-	// Group 5: Optional ON UPDATE action.
 	onUpdate := ""
-	if len(matches) > 5 && matches[5] != "" {
-		onUpdate = strings.TrimSpace(matches[5])
-	}
-
-	// Group 6: Optional DEFERRABLE flag.
 	deferrable := false
-	if len(matches) > 6 && matches[6] != "" {
-		// Use a case-insensitive comparison to check if the matched string is "DEFERRABLE"
-		deferrable = strings.EqualFold(strings.TrimSpace(matches[6]), "DEFERRABLE")
+
+	// Search for ON DELETE clause.
+	deleteRegex := regexp.MustCompile(`(?i)ON DELETE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)`)
+	if m := deleteRegex.FindStringSubmatch(rest); m != nil {
+		onDelete = strings.ToUpper(strings.TrimSpace(m[1]))
 	}
 
-	// Return the parsed foreign key constraint.
+	// Search for ON UPDATE clause.
+	updateRegex := regexp.MustCompile(`(?i)ON UPDATE\s+(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)`)
+	if m := updateRegex.FindStringSubmatch(rest); m != nil {
+		onUpdate = strings.ToUpper(strings.TrimSpace(m[1]))
+	}
+
+	// Search for DEFERRABLE keyword.
+	if regexp.MustCompile(`(?i)\bDEFERRABLE\b`).FindString(rest) != "" {
+		deferrable = true
+	}
+
 	return &ForeignKeyConstraint{
 		ColumnName:          columnName,
 		ReferenceTableName:  refTableName,
