@@ -207,11 +207,16 @@ type CheckConstraint struct {
 
 // parseCheckConstraint parses a check constraint definition.
 func parseCheckConstraint(constraintDefinition string) *CheckConstraint {
-	input := strings.TrimPrefix(constraintDefinition, "CHECK ((")
-	input = strings.TrimSuffix(input, "))")
-
+	// Use a regex to extract the inner expression.
+	// This regex will match a CHECK clause with one or two layers of parentheses.
+	re := regexp.MustCompile(`(?i)^CHECK\s*\(\s*\(?\s*(.*\S)\s*\)?\s*\)$`)
+	matches := re.FindStringSubmatch(constraintDefinition)
+	if len(matches) < 2 {
+		return nil
+	}
+	expression := matches[1]
 	return &CheckConstraint{
-		Expression: input,
+		Expression: expression,
 	}
 }
 
