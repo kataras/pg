@@ -223,6 +223,7 @@ func ExampleDB_ListConstraints() {
 				ReferenceTableName:  "blogs",
 				ReferenceColumnName: "id",
 				OnDelete:            "CASCADE",
+				OnUpdate:            "NO ACTION", // the default.
 				Deferrable:          true,
 			},
 		},
@@ -317,25 +318,25 @@ func ExampleDB_ListConstraints() {
 
 			if expected.ForeignKey != nil && got.ForeignKey != nil {
 				if !reflect.DeepEqual(expected.ForeignKey, got.ForeignKey) {
-					fmt.Printf("expected foreign key:\n%#+v\nbut got:\n%#+v", expected.ForeignKey, got.ForeignKey)
+					fmt.Printf("[%d] expected foreign key:\n%#+v\nbut got:\n%#+v", i, expected.ForeignKey, got.ForeignKey)
 				}
 				continue
 			}
 			if expected.Unique != nil && got.Unique != nil {
 				if !reflect.DeepEqual(expected.Unique, got.Unique) {
-					fmt.Printf("expected unique:\n%#+v\nbut got:\n%#+v", expected.Unique, got.Unique)
+					fmt.Printf("[%d] expected unique:\n%#+v\nbut got:\n%#+v", i, expected.Unique, got.Unique)
 				}
 				continue
 			}
 
 			if expected.Check != nil && got.Check != nil {
 				if !reflect.DeepEqual(expected.Check, got.Check) {
-					fmt.Printf("expected check:\n%#+v\nbut got:\n%#+v", expected.Check, got.Check)
+					fmt.Printf("[%d] expected check:\n%#+v\nbut got:\n%#+v", i, expected.Check, got.Check)
 				}
 				continue
 			}
 
-			fmt.Printf("expected:\n%#+v\nbut got:\n%#+v", expected, got)
+			fmt.Printf("[%d] expected:\n%#+v\nbut got:\n%#+v", i, expected, got)
 		}
 	}
 
