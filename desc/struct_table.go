@@ -351,5 +351,8 @@ func convertStructFieldToColumnDefinion(tableName string, field reflect.StructFi
 		}
 	}
 
+	// cache if the field type completes the sql.Scanner interface.
+	c.isScanner = implementsScanner(field.Type)
+
 	return c, nil
 }

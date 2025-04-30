@@ -1,9 +1,16 @@
 package desc
 
 import (
+	"database/sql"
 	"reflect"
 	"strings"
 )
+
+var scannerInterface = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+
+func implementsScanner(typ reflect.Type) bool {
+	return typ.Implements(scannerInterface) || reflect.PointerTo(typ).Implements(scannerInterface)
+}
 
 // reflect.
 

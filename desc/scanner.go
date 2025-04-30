@@ -1,6 +1,7 @@
 package desc
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -159,6 +160,16 @@ func findScanTargets(dstElemValue reflect.Value, td *Table, fieldDescs []pgconn.
 			continue
 		}
 
+		if !col.isPtr && col.Nullable && (col.Type == JSONB || col.Type == JSON) && !col.isScanner {
+			// It's a JSONB/JSON column, can be null, it does not already implement a custom Scan method,
+			// then wrap it so it can handle null and json values automatically.
+			scanTargets[i] = &jsonScanner{
+				fieldPtr: dstElemValue.FieldByIndex(col.FieldIndex),
+			}
+
+			continue
+		}
+
 		// get the scan target by using the field index and taking the address and interface of the struct field
 		scanTargets[i] = dstElemValue.FieldByIndex(col.FieldIndex).Addr().Interface()
 	}
@@ -218,6 +229,41 @@ func (t *passwordTextScanner) Scan(src interface{}) error {
 
 	return nil
 }
+
+// jsonScanner is a custom scanner for JSONB/JSON types in PostgreSQL.
+type jsonScanner struct {
+	fieldPtr reflect.Value
+}
+
+// Scan completes the sql driver.Scanner interface.
+func (t *jsonScanner) Scan(src any) error {
+	if src == nil {
+		return nil
+	}
+
+	var data []byte
+	switch v := src.(type) {
+	case []byte: // old pg
+		data = v
+	case string: // new pg
+		data = []byte(v)
+	default:
+		return fmt.Errorf("scan: invalid type of: %T", src)
+	}
+
+	// Determine the target for unmarshaling.
+	target := t.fieldPtr.Interface()
+	if t.fieldPtr.Kind() != reflect.Ptr && t.fieldPtr.CanAddr() {
+		target = t.fieldPtr.Addr().Interface()
+	}
+
+	return json.Unmarshal(data, target)
+}
+
+// Value completes the sql driver.Valuer interface.
+// func (t jsonScanner) Value() (driver.Value, error) {
+// 	return json.Marshal(t.fieldPtr.Interface())
+// }
 
 /* No need, the current version supports it very well nowadays.
 if col.Type.IsArray() {
