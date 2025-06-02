@@ -34,11 +34,13 @@ type Schema struct {
 // NewSchema creates and returns a new Schema with an initialized struct cache.
 func NewSchema() *Schema {
 	return &Schema{
-		// make a map from reflect.Type to Table.
+		// Make a map from reflect.Type to Table.
 		structCache: make(map[reflect.Type]*desc.Table),
-		// set the default name for the "updated_at" column.
+		// Set the default name for the "updated_at" column.
 		UpdatedAtColumnName: "updated_at",
-		// set the default name for the trigger that sets the "updated_at" column.
+		// Set the default name for the trigger that sets the "updated_at" column.
+		// having triggers with the same name (`set_timestamp`) across different tables is perfectly fine in PostgreSQL.
+		// Trigger names only need to be unique within a table, not across the entire database.
 		SetTimestampTriggerName: "set_timestamp",
 		Strict:                  true,
 	}

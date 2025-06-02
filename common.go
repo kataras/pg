@@ -65,7 +65,7 @@ func QueryTwoSlices[T, V any](ctx context.Context, db *DB, query string, args ..
 			t T
 			v V
 		)
-		if err = rows.Scan(&t, v); err != nil {
+		if err = rows.Scan(&t, &v); err != nil {
 			return nil, nil, err
 		}
 
