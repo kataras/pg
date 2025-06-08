@@ -5,7 +5,7 @@ go 1.24
 require (
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/jackc/pgx/v5 v5.7.5
-	golang.org/x/mod v0.24.0
+	golang.org/x/mod v0.25.0
 )
 
 require (

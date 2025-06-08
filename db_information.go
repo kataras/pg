@@ -369,7 +369,7 @@ func (db *DB) ListTableSizes(ctx context.Context) ([]TableSizeInfo, error) {
   WHERE table_schema = $1
   ORDER BY 3 DESC;`
 
-	return scanQuery[TableSizeInfo](ctx, db, func(rows Rows) (t TableSizeInfo, err error) {
+	return scanQuery(ctx, db, func(rows Rows) (t TableSizeInfo, err error) {
 		err = rows.Scan(&t.TableName, &t.SizePretty, &t.Size, &t.SizeTotalPretty, &t.SizeTotal)
 		return
 	}, query, db.searchPath)

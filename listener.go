@@ -91,7 +91,7 @@ func notifyJSON(ctx context.Context, db *DB, channel string, payload any) error 
 // it accepts string or a slice of bytes because that's the only raw types that are allowed to be delivered.
 func notifyNative[T string | []byte](ctx context.Context, db *DB, channel string, payload T) error {
 	query := `SELECT pg_notify($1, $2)`
-	_, err := db.Pool.Exec(context.Background(), query, channel, payload) // Always on top.
+	_, err := db.Pool.Exec(ctx, query, channel, payload) // Always on top.
 	return err
 }
 
