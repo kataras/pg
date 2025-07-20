@@ -36,6 +36,7 @@ func Singular(s string) string {
 // - ID     to id
 // - ProviderAPIKey to provider_api_key
 // - Option to option
+// - URL to url
 func SnakeCase(camel string) string {
 	var (
 		b            strings.Builder
