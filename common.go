@@ -2,6 +2,8 @@ package pg
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // QuerySlice executes the given query and returns a list of T entries.
@@ -112,4 +114,9 @@ func scanQuery[T any](ctx context.Context, db *DB, scanner func(rows Rows) (T, e
 	}
 
 	return list, nil
+}
+
+// QuoteIdentifier sanitizes a string identifier for use in SQL queries.
+func QuoteIdentifier(identifier string) string {
+	return pgx.Identifier{identifier}.Sanitize()
 }

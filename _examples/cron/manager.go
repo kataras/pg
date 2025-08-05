@@ -240,12 +240,12 @@ func (m *Manager) executeJob(ctx context.Context, job *Job) {
 	m.mu.Unlock()
 }
 
-// GetJob returns a job by ID.
-func (m *Manager) GetJob(id string) (*Job, bool) {
+// GetJob returns a job by Name.
+func (m *Manager) GetJob(name string) (*Job, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	job, exists := m.jobs[id]
+	job, exists := m.jobs[name]
 	return job, exists
 }
 
@@ -262,13 +262,13 @@ func (m *Manager) ListJobs() []*Job {
 }
 
 // DisableJob disables a job.
-func (m *Manager) DisableJob(ctx context.Context, id string) error {
+func (m *Manager) DisableJob(ctx context.Context, name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	job, exists := m.jobs[id]
+	job, exists := m.jobs[name]
 	if !exists {
-		return fmt.Errorf("job not found: %s", id)
+		return fmt.Errorf("job not found: %s", name)
 	}
 
 	job.Status = StatusDisabled
@@ -278,13 +278,13 @@ func (m *Manager) DisableJob(ctx context.Context, id string) error {
 }
 
 // EnableJob enables a disabled job.
-func (m *Manager) EnableJob(ctx context.Context, id string) error {
+func (m *Manager) EnableJob(ctx context.Context, name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	job, exists := m.jobs[id]
+	job, exists := m.jobs[name]
 	if !exists {
-		return fmt.Errorf("job not found: %s", id)
+		return fmt.Errorf("job not found: %s", name)
 	}
 
 	job.Status = StatusPending
