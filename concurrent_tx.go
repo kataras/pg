@@ -50,7 +50,7 @@ func (ct *ConcurrentTx) Commit(ctx context.Context) error {
 
 // QueryRow is a wrapper around pgx.Tx.QueryRow that provides a mutex to synchronize
 // access to the underlying pgx.Tx.
-func (ct *ConcurrentTx) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
+func (ct *ConcurrentTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
 

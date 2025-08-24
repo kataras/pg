@@ -41,7 +41,7 @@ var textToConstraintType = map[string]ConstraintType{
 }
 
 // Scan implements the sql.Scanner interface.
-func (t *ConstraintType) Scan(src interface{}) error {
+func (t *ConstraintType) Scan(src any) error {
 	switch v := src.(type) {
 	case []byte:
 		return t.Scan(string(v))

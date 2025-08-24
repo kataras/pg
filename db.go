@@ -571,7 +571,7 @@ func (db *DB) UpdateJSONB(ctx context.Context, tableName, columnName, rowID stri
 		/*
 			// Loop over the keys and construct the path and value arrays.
 			path := []string{}
-			value := []interface{}{}
+			value := []any{}
 			for _, key := range fieldsToUpdate {
 				// Get the value for the key from the map.
 				v, ok := values[key]

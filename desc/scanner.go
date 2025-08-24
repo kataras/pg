@@ -70,7 +70,7 @@ func RowToStruct[T any](td *Table, rows pgx.Rows) (value T, err error) {
 
 // ConvertRowsToStruct takes a table definition, a row of data from a database query, and a generic type T
 // and returns a value of type T with the fields populated from the row data.
-func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr interface{}) error {
+func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr any) error {
 	// declare a variable to hold the result
 	// var value T
 	// get the reflect value of the result variable
@@ -179,13 +179,13 @@ func findScanTargets(dstElemValue reflect.Value, td *Table, fieldDescs []pgconn.
 
 type noOpScanner struct{}
 
-func (t *noOpScanner) Scan(src interface{}) error { return nil }
+func (t *noOpScanner) Scan(src any) error { return nil }
 
 type nullableScanner struct { // useful for UUIDs with null values.
 	fieldPtr reflect.Value
 }
 
-func (t *nullableScanner) Scan(src interface{}) error {
+func (t *nullableScanner) Scan(src any) error {
 	if src == nil { // <- IMPORTANT.
 		return nil
 	}
@@ -203,7 +203,7 @@ type passwordTextScanner struct {
 }
 
 // Scan completes the sql driver.Scanner interface.
-func (t *passwordTextScanner) Scan(src interface{}) error {
+func (t *passwordTextScanner) Scan(src any) error {
 	switch v := src.(type) {
 	case string:
 		plainText, err := t.passwordHandler.Decrypt(t.tableName, v)
@@ -274,7 +274,7 @@ if col.Type.IsArray() {
 	continue
 }
 
-func parseArray(src interface{}) ([]string, error) {
+func parseArray(src any) ([]string, error) {
 	if src == nil { // allow nullable.
 		return nil, nil
 	}
@@ -306,7 +306,7 @@ type arrayScanner struct {
 	arrayFieldPtr  reflect.Value
 }
 
-func (t *arrayScanner) Scan(src interface{}) error {
+func (t *arrayScanner) Scan(src any) error {
 	values, err := parseArray(src)
 	if err != nil {
 		return fmt.Errorf("array scan: %s: %w", t.colName, err)

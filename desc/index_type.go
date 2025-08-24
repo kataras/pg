@@ -38,7 +38,7 @@ func (t IndexType) String() string {
 	return fmt.Sprintf("IndexType(unexpected %d)", t) // otherwise, return a formatted string with the numeric value
 }
 
-func (t *IndexType) Scan(src interface{}) error {
+func (t *IndexType) Scan(src any) error {
 	if src == nil {
 		return nil
 	}

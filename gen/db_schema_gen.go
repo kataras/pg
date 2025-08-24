@@ -222,7 +222,7 @@ func generateSchemaFile(e *ExportOptions, packageName, rootImportPath, goModuleN
 			})
 	}
 
-	tmplData := map[string]interface{}{
+	tmplData := map[string]any{
 		"PackageName":  packageName,
 		"DatabaseName": databaseName,
 		"Tables":       tableSchemaTmplData,
