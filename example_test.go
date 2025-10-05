@@ -23,7 +23,7 @@ func Example() {
 	registry := NewRegistry(db) // Create a new Registry instance with the DB instance.
 
 	// Execute a function within a database transaction, passing it a Registry instance that uses the transactional DB instance.
-	err = registry.InTransaction(context.Background(), func(registry *Registry) error {
+	err = registry.InTransaction(context.Background(), func(registry *RegistryExample) error {
 		customers := registry.Customers() // Get the CustomerRepository instance from the Registry.
 
 		customerToInsert := Customer{ // Create a Customer struct to be inserted into the database.

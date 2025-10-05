@@ -45,9 +45,9 @@ func (r *CustomerRepository) Exists(ctx context.Context, cognitoUserID string) (
 	return
 }
 
-// Registry is (optional) a struct that holds references to different repositories for accessing and manipulating data in the database.
+// RegistryExample is (optional) a struct that holds references to different repositories for accessing and manipulating data in the database.
 // It has a db field that is a pointer to a DB instance, and a customers field that is a pointer to a CustomerRepository instance.
-type Registry struct {
+type RegistryExample struct {
 	db *DB
 
 	customers *CustomerRepository
@@ -57,8 +57,8 @@ type Registry struct {
 
 // NewRegistry creates and returns a new Registry instance with the given DB instance.
 // It also initializes the customers field with a new CustomerRepository instance that uses the same DB instance.
-func NewRegistry(db *DB) *Registry {
-	return &Registry{
+func NewRegistry(db *DB) *RegistryExample {
+	return &RegistryExample{
 		db: db,
 
 		customers: NewCustomerRepository(db),
@@ -70,7 +70,7 @@ func NewRegistry(db *DB) *Registry {
 // InTransaction overrides the pg Repository's InTransaction method to include the custom type of Registry.
 // It takes a context and a function as arguments and executes the function within a database transaction,
 // passing it a Registry instance that uses the transactional DB instance.
-func (r *Registry) InTransaction(ctx context.Context, fn func(*Registry) error) (err error) {
+func (r *RegistryExample) InTransaction(ctx context.Context, fn func(*RegistryExample) error) (err error) {
 	if r.db.IsTransaction() {
 		return fn(r)
 	}
@@ -82,17 +82,17 @@ func (r *Registry) InTransaction(ctx context.Context, fn func(*Registry) error) 
 }
 
 // Customers returns the CustomerRepository instance of the Registry.
-func (r *Registry) Customers() *CustomerRepository {
+func (r *RegistryExample) Customers() *CustomerRepository {
 	return r.customers
 }
 
 // Blogs returns the Repository instance of the Blog entity.
-func (r *Registry) Blogs() *Repository[Blog] {
+func (r *RegistryExample) Blogs() *Repository[Blog] {
 	return r.blogs
 }
 
 // BlogPosts returns the Repository instance of the BlogPost entity.
-func (r *Registry) BlogPosts() *Repository[BlogPost] {
+func (r *RegistryExample) BlogPosts() *Repository[BlogPost] {
 	return r.blogPosts
 }
 
