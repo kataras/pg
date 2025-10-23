@@ -84,10 +84,10 @@ func (db *DB) selectSingleTable(ctx context.Context, td *desc.Table, destPtr any
 
 	if !rows.Next() { // check if there is a next row in the rows
 		if err = rows.Err(); err != nil {
-			return err // return an error if there was an error in getting the next row
+			return fmt.Errorf("%s: %w", td.GetHumanName(), err) // return an error if there was an error in getting the next row
 		}
 
-		return ErrNoRows // return an error if there was no row in the rows
+		return fmt.Errorf("%s: %w", td.GetHumanName(), ErrNoRows) // return an error if there was no row in the rows
 	}
 
 	err = desc.ConvertRowsToStruct(td, rows, destPtr) // convert the row to a struct and assign it to destPtr

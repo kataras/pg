@@ -68,6 +68,15 @@ type Table struct {
 	PasswordHandler *PasswordHandler
 }
 
+// GetHumanName returns the human-friendly name of the table.
+func (td *Table) GetHumanName() string {
+	if td.StructName != "" {
+		return td.StructName
+	}
+
+	return PascalCase(td.Name)
+}
+
 // IsType returns true if the table is one of the given types (true if no typesToCheck provided).
 func (td *Table) IsType(typesToCheck ...TableType) bool {
 	if len(typesToCheck) == 0 {

@@ -54,10 +54,10 @@ func RowToStruct[T any](td *Table, rows pgx.Rows) (value T, err error) {
 
 	if !rows.Next() { // check if there is a next row in the rows
 		if err = rows.Err(); err != nil {
-			return value, err // return an error if there was an error in getting the next row
+			return value, fmt.Errorf("%s: %w", td.GetHumanName(), err) // return an error if there was an error in getting the next row
 		}
 
-		return value, pgx.ErrNoRows // return an error if there was no row in the rows
+		return value, fmt.Errorf("%s: %w", td.GetHumanName(), pgx.ErrNoRows) // return an error if there was no row in the rows
 	}
 
 	err = ConvertRowsToStruct(td, rows, &value) // convert the row to a value of type T using the table definition
