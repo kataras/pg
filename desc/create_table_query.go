@@ -25,9 +25,14 @@ func BuildCreateTableQuery(td *Table) string {
 			query.WriteString(fmt.Sprintf("(%s)", col.TypeArgument))
 		}
 
-		// Add the default value if any
-		if col.Default != "" {
-			query.WriteString(" DEFAULT " + col.Default)
+		if col.GeneratedExpression != "" {
+			// Stored generated column: GENERATED ALWAYS AS (expr) STORED
+			query.WriteString(fmt.Sprintf(" GENERATED ALWAYS AS (%s) STORED", col.GeneratedExpression))
+		} else {
+			// Add the default value if any
+			if col.Default != "" {
+				query.WriteString(" DEFAULT " + col.Default)
+			}
 		}
 		// Add the NOT NULL constraint if applicable
 		if !col.Nullable {

@@ -1,6 +1,7 @@
 package pg
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,8 +11,15 @@ import (
 var (
 	// ErrNoRows is fired from a query when no results are came back.
 	// Usually it's ignored and an empty json array is sent to the client instead.
+	//
+	// This error should be compared using errors.Is() or IsErrNoRows package-level function.
 	ErrNoRows = pgx.ErrNoRows
 )
+
+// IsErrNoRows reports whether the error is ErrNoRows.
+func IsErrNoRows(err error) bool {
+	return errors.Is(err, ErrNoRows)
+}
 
 // IsErrDuplicate reports whether the return error from `Insert` method
 // was caused because of a violation of a unique constraint (it's not typed error at the underline driver).
