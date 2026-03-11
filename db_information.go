@@ -812,7 +812,8 @@ func (db *DB) ListColumnsInformationSchema(ctx context.Context, tableNames ...st
 	pg_catalog.format_type(p.atttypid, p.atttypmod) AS data_type,
 	CASE WHEN c.is_nullable = 'YES' THEN true ELSE false END AS is_nullable,
 	CASE WHEN c.is_identity = 'YES' THEN true ELSE false END AS is_identity,
-	CASE WHEN c.is_generated = 'ALWAYS' THEN true ELSE false END AS is_generated
+	CASE WHEN c.is_generated = 'ALWAYS' THEN true ELSE false END AS is_generated,
+	c.generation_expression
 	FROM information_schema.columns c
 		JOIN information_schema.tables t ON t.table_catalog = c.table_catalog AND t.table_schema = c.table_schema AND t.table_name = c.table_name
 		JOIN pg_catalog.pg_attribute p ON p.attrelid = (c.table_schema || '.' || c.table_name)::regclass AND p.attname = c.column_name
@@ -829,17 +830,18 @@ func (db *DB) ListColumnsInformationSchema(ctx context.Context, tableNames ...st
 
 	for rows.Next() {
 		var (
-			tableName         string
-			tableDescription  sql.NullString
-			fullTableType     string
-			columnName        string
-			ordinalPosition   int // for FieldIndex and OrdinalPosition.
-			columnDescription sql.NullString
-			columnDefault     sql.NullString
-			fullDataType      string
-			isNullable        bool
-			isIdentity        bool
-			isGenerated       bool
+			tableName            string
+			tableDescription     sql.NullString
+			fullTableType        string
+			columnName           string
+			ordinalPosition      int // for FieldIndex and OrdinalPosition.
+			columnDescription    sql.NullString
+			columnDefault        sql.NullString
+			fullDataType         string
+			isNullable           bool
+			isIdentity           bool
+			isGenerated          bool
+			generationExpression sql.NullString
 		)
 
 		if err := rows.Scan(
@@ -854,6 +856,7 @@ func (db *DB) ListColumnsInformationSchema(ctx context.Context, tableNames ...st
 			&isNullable,
 			&isIdentity,
 			&isGenerated,
+			&generationExpression,
 		); err != nil {
 			return nil, err
 		}
@@ -885,8 +888,9 @@ func (db *DB) ListColumnsInformationSchema(ctx context.Context, tableNames ...st
 			DataType:         dataType,
 			DataTypeArgument: dataTypeArgument,
 			IsNullable:       isNullable,
-			IsIdentity:       isIdentity,
-			IsGenerated:      isGenerated,
+			IsIdentity:           isIdentity,
+			IsGenerated:          isGenerated,
+			GenerationExpression: generationExpression.String,
 		}
 
 		columns = append(columns, column)
