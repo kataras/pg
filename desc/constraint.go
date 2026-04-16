@@ -117,10 +117,6 @@ var _ ColumnBuilder = (*Constraint)(nil)
 
 // BuildColumn implements the ColumnBuilder interface.
 func (c *Constraint) BuildColumn(column *Column) error {
-	if column.Index == InvalidIndex {
-		column.Index = c.IndexType
-	}
-
 	switch c.ConstraintType {
 	case PrimaryKeyConstraintType:
 		column.PrimaryKey = true

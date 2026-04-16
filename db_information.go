@@ -536,7 +536,9 @@ func (db *DB) ListColumns(ctx context.Context, tableNames ...string) ([]*desc.Co
 		}
 
 		// No need to put index types on these type of columns, postgres manages these.
-		if column.PrimaryKey || column.Unique || column.UniqueIndex != "" {
+		// Note: UniqueIndex is excluded because it may be composite (multi-column),
+		// and a separate single-column index can still be intentional.
+		if column.PrimaryKey || column.Unique {
 			column.Index = desc.InvalidIndex
 		}
 
