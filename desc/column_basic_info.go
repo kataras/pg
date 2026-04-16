@@ -5,16 +5,16 @@ import "reflect"
 // ColumnBasicInfo represents a basic column information, contains the table name, column name, ordinal position, column default value,
 // data type, data type argument, whether the column is nullable, whether the column is identity and whether the column is generated.
 type ColumnBasicInfo struct {
-	TableName        string
-	TableDescription string
-	TableType        TableType
-	Name             string
-	OrdinalPosition  int
-	Description      string
-	Default          string
-	DataType         DataType
-	DataTypeArgument string
-	IsNullable       bool
+	TableName            string
+	TableDescription     string
+	TableType            TableType
+	Name                 string
+	OrdinalPosition      int
+	Description          string
+	Default              string
+	DataType             DataType
+	DataTypeArgument     string
+	IsNullable           bool
 	IsIdentity           bool
 	IsGenerated          bool
 	GenerationExpression string

@@ -126,12 +126,17 @@ func (c *Constraint) BuildColumn(column *Column) error {
 		column.PrimaryKey = true
 	case UniqueConstraintType:
 		if len(c.Unique.Columns) == 0 || (len(c.Unique.Columns) == 1 && c.Unique.Columns[0] == c.ColumnName) {
-			// simple unique to itself.
-			column.Unique = true
+			// PostgreSQL auto-generates constraint names as "{table}_{column}_key".
+			// If the name differs, it was explicitly set via unique_index=name.
+			autoName := fmt.Sprintf("%s_%s_key", c.TableName, c.ColumnName)
+			if c.ConstraintName != "" && c.ConstraintName != autoName {
+				column.UniqueIndex = c.ConstraintName
+			} else {
+				column.Unique = true
+			}
 		} else {
 			column.UniqueIndex = c.ConstraintName
 		}
-		// column.Unique = true
 	case CheckConstraintType:
 		column.CheckConstraint = c.Check.Expression
 	case ForeignKeyConstraintType:
