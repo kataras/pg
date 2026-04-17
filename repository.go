@@ -160,7 +160,13 @@ func (repo *Repository[T]) Exists(ctx context.Context, value T) (bool, error) {
 // ErrIsReadOnly is returned by Insert and InsertSingle if the repository is read-only.
 var ErrIsReadOnly = errors.New("repository is read-only")
 
-// Insert inserts one or more values of type T into the database by calling repo.InsertSingle for each value within a transaction.
+// Insert inserts one or more values of type T into the database.
+//
+// For a single value, it delegates to InsertSingle. For multiple values
+// it delegates to InsertMany, which issues one multi-row INSERT per
+// desc.DefaultInsertBatchSize rows rather than one round-trip per row —
+// the previous implementation compounded network latency and could turn
+// a few-thousand-row catalog sync into a multi-minute operation.
 func (repo *Repository[T]) Insert(ctx context.Context, values ...T) error {
 	if repo.IsReadOnly() {
 		return ErrIsReadOnly
@@ -172,20 +178,47 @@ func (repo *Repository[T]) Insert(ctx context.Context, values ...T) error {
 	case 1:
 		return repo.InsertSingle(ctx, values[0], nil)
 	default:
-		// Use repo.InTransaction to run a function within a database transaction and handle the commit or rollback
-		return repo.InTransaction(ctx, func(repo *Repository[T]) error {
-			// Loop over the values and insert each one using repo.InsertSingle
-			for _, value := range values {
-				// Call repo.InsertSingle with the value and nil as the idPtr
-				err := repo.InsertSingle(ctx, value, nil)
-				if err != nil {
-					return err // return the error and roll back the transaction if repo.InsertSingle fails
-				}
+		return repo.InsertMany(ctx, values...)
+	}
+}
+
+// InsertMany bulk-inserts values via multi-row VALUES statements in
+// batches of desc.DefaultInsertBatchSize. The whole operation runs in
+// one transaction so any batch failure rolls back all earlier batches.
+//
+// Per-row semantics match InsertSingle: zero-valued fields on columns
+// that carry a DB default emit the DEFAULT keyword instead of a
+// parameter, so clock_timestamp() / gen_random_uuid() etc. fire as
+// expected.
+func (repo *Repository[T]) InsertMany(ctx context.Context, values ...T) error {
+	if repo.IsReadOnly() {
+		return ErrIsReadOnly
+	}
+	if len(values) == 0 {
+		return nil
+	}
+
+	return repo.InTransaction(ctx, func(repo *Repository[T]) error {
+		batchSize := desc.DefaultInsertBatchSize
+		for start := 0; start < len(values); start += batchSize {
+			end := min(start+batchSize, len(values))
+			batch := values[start:end]
+
+			structValues := make([]reflect.Value, len(batch))
+			for i := range batch {
+				structValues[i] = desc.IndirectValue(batch[i])
 			}
 
-			return nil // return nil and commit the transaction if no error occurred
-		})
-	}
+			query, args, err := desc.BuildBulkInsertQuery(repo.td, structValues, "", false)
+			if err != nil {
+				return err
+			}
+			if _, err := repo.db.Exec(ctx, query, args...); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // InsertSingle inserts a single value of type T into the database by calling repo.db.InsertSingle with the value and the idPtr.
@@ -203,6 +236,10 @@ func (repo *Repository[T]) InsertSingle(ctx context.Context, value T, idPtr any)
 const DoNothing = "DO NOTHING"
 
 // Upsert inserts or updates one or more values of type T into the database.
+// Upsert inserts or updates one or more values of type T. Single-row
+// calls delegate to UpsertSingle; multi-row calls delegate to
+// UpsertMany, which issues batched multi-row INSERT ... ON CONFLICT
+// DO UPDATE statements rather than one round-trip per row.
 func (repo *Repository[T]) Upsert(ctx context.Context, forceOnConflictExpr string, values ...T) error {
 	if repo.IsReadOnly() {
 		return ErrIsReadOnly
@@ -214,20 +251,48 @@ func (repo *Repository[T]) Upsert(ctx context.Context, forceOnConflictExpr strin
 	case 1:
 		return repo.UpsertSingle(ctx, forceOnConflictExpr, values[0], nil)
 	default:
-		// Use repo.InTransaction to run a function within a database transaction and handle the commit or rollback
-		return repo.InTransaction(ctx, func(repo *Repository[T]) error {
-			// Loop over the values and insert each one using repo.UpsertSingle
-			for _, value := range values {
-				// Call repo.UpsertSingle with the value and nil as the idPtr
-				err := repo.UpsertSingle(ctx, forceOnConflictExpr, value, nil)
-				if err != nil {
-					return err // return the error and roll back the transaction if repo.UpsertSingle fails
-				}
+		return repo.UpsertMany(ctx, forceOnConflictExpr, values...)
+	}
+}
+
+// UpsertMany bulk-upserts values via multi-row INSERT ... ON CONFLICT
+// DO UPDATE statements in batches of desc.DefaultInsertBatchSize.
+// forceOnConflictExpr behaves exactly as on UpsertSingle: empty uses
+// the struct's declared conflict target (unique_index tag), non-empty
+// names a specific unique index to target.
+//
+// The whole call runs in one transaction. Per-row DEFAULT semantics
+// match InsertMany — zero-valued fields on defaulted columns emit the
+// DEFAULT keyword so DB defaults fire.
+func (repo *Repository[T]) UpsertMany(ctx context.Context, forceOnConflictExpr string, values ...T) error {
+	if repo.IsReadOnly() {
+		return ErrIsReadOnly
+	}
+	if len(values) == 0 {
+		return nil
+	}
+
+	return repo.InTransaction(ctx, func(repo *Repository[T]) error {
+		batchSize := desc.DefaultInsertBatchSize
+		for start := 0; start < len(values); start += batchSize {
+			end := min(start+batchSize, len(values))
+			batch := values[start:end]
+
+			structValues := make([]reflect.Value, len(batch))
+			for i := range batch {
+				structValues[i] = desc.IndirectValue(batch[i])
 			}
 
-			return nil // return nil and commit the transaction if no error occurred
-		})
-	}
+			query, args, err := desc.BuildBulkInsertQuery(repo.td, structValues, forceOnConflictExpr, true)
+			if err != nil {
+				return err
+			}
+			if _, err := repo.db.Exec(ctx, query, args...); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // UpsertSingle inserts or updates a single value of type T into the database.
