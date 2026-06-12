@@ -242,6 +242,8 @@ func (db *DB) CheckSchema(ctx context.Context) error {
 			// 	column.Unique = false
 			// }
 
+			tolerateUndeclaredUniqueMemberIndex(col, column)
+
 			if expected, got := strings.ToLower(col.FieldTagString(false)), strings.ToLower(column.FieldTagString(false)); expected != got {
 				// if strings.Contains(expected, "nullable") && !strings.Contains(got, "nullable") {
 				// 	// database has nullable, but code doesn't.
@@ -274,6 +276,17 @@ func (db *DB) CheckSchema(ctx context.Context) error {
 	// }
 
 	return nil // return nil if no mismatch is found
+}
+
+// tolerateUndeclaredUniqueMemberIndex clears the database-reported single-column
+// index of a column that participates in a composite/named unique index when the
+// code does not explicitly declare one. Such indexes are usually legacy or
+// hand-made (e.g. <table>_<column>_fkey on junction tables) and must not fail
+// the schema check. Explicitly declared indexes are still verified both ways.
+func tolerateUndeclaredUniqueMemberIndex(dbColumn, codeColumn *desc.Column) {
+	if dbColumn.UniqueIndex != "" && dbColumn.Index != desc.InvalidIndex && codeColumn.Index == desc.InvalidIndex {
+		dbColumn.Index = desc.InvalidIndex
+	}
 }
 
 // DeleteSchema drops the database schema.
