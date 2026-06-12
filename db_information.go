@@ -344,9 +344,10 @@ func (db *DB) GetVersion(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("could not find end of version number in version string: %s", version)
 	}
 
-	end += start                            // move the end index to the end of the version number
-	versionNumber := version[start : end-1] // -1 to remove the trailing comma. Slice the version string to get only the version number
-	versionNumber = strings.TrimSuffix(versionNumber, ".")
+	end += start // move the end index to the end of the version number
+	// Trim a trailing comma, present in some version() formats,
+	// e.g. "PostgreSQL 16.1, compiled by Visual C++ build 1914".
+	versionNumber := strings.TrimSuffix(version[start:end], ",")
 	return versionNumber, nil // return the version number and nil as no error occurred
 }
 

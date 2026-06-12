@@ -2,12 +2,13 @@ package pg
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/kataras/pg/desc"
 )
 
-// This should match the CI's postgres version.
+// This should match the CI's postgres major version (see .github/workflows/ci.yml).
 const expectedDBVersion = "16"
 
 func TestInformation_GetVersion(t *testing.T) {
@@ -22,8 +23,9 @@ func TestInformation_GetVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if version != expectedDBVersion {
-		t.Fatalf("expected version: %s but got: %s", expectedDBVersion, version)
+	major, _, _ := strings.Cut(version, ".")
+	if major != expectedDBVersion {
+		t.Fatalf("expected major version: %s but got: %s (full: %s)", expectedDBVersion, major, version)
 	}
 }
 
