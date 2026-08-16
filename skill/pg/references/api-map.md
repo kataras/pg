@@ -193,6 +193,7 @@ are the matching `desc.` types, `pg.Identifier` = `pgx.Identifier`, `pg.CopyFrom
 | `pg.IsErrColumnNotExists` | `func IsErrColumnNotExists(err error, col string) bool` | SQLSTATE `42703` naming `col` |
 | `pg.ErrIsReadOnly` | see Write | |
 | `pg.ErrEmptyPayload` | `var ErrEmptyPayload error` | From `Listener.Accept` when a notification has an empty payload |
+| `pg.ErrListenerClosed` | `var ErrListenerClosed error` | From `Listener.Accept` when the listener is closed, before or during the wait; an orderly shutdown, so break the listen loop rather than log it |
 | `desc.ErrCopyPassword` | see Bulk | |
 
 ## Introspect
@@ -250,8 +251,8 @@ detection of an out-of-order filename. Reach for `golang-migrate/migrate` or
 | `(*DB).Listen` | `func (db *DB) Listen(ctx context.Context, channel string) (*Listener, error)` | `channel` is quoted before `LISTEN` |
 | `(*DB).Notify` | `func (db *DB) Notify(ctx context.Context, channel string, payload any) error` | `string`/`[]byte` sent as-is via `pg_notify`; anything else JSON-marshaled first |
 | `(*DB).Unlisten` | `func (db *DB) Unlisten(ctx context.Context, channel string) error` | `"*"` unlistens every channel, unquoted |
-| `(*Listener).Accept` | `func (l *Listener) Accept(ctx context.Context) (*Notification, error)` | Blocks for the next notification |
-| `(*Listener).Close` | `func (l *Listener) Close(ctx context.Context) error` | `UNLISTEN` then release the pooled connection; safe to call more than once |
+| `(*Listener).Accept` | `func (l *Listener) Accept(ctx context.Context) (*Notification, error)` | Blocks for the next notification; returns `ErrListenerClosed` if `Close` interrupts the wait |
+| `(*Listener).Close` | `func (l *Listener) Close(ctx context.Context) error` | `UNLISTEN` then release the pooled connection; safe to call more than once, concurrently, and while another goroutine waits in `Accept` |
 | `pg.UnmarshalNotification[T]` | `func UnmarshalNotification[T any](n *Notification) (T, error)` | JSON-decodes `n.Payload` |
 | `(*DB).PrepareListenTable` | `func (db *DB) PrepareListenTable(ctx context.Context, opts *ListenTableOptions) error` | Creates the shared notify function and per-table trigger, once each |
 | `(*DB).ListenTable` | `func (db *DB) ListenTable(ctx context.Context, opts *ListenTableOptions, callback func(TableNotificationJSON, error) error) (Closer, error)` | Delivers INSERT/UPDATE/DELETE as JSON; callback runs on its own goroutine |

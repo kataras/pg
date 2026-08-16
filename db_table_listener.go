@@ -293,8 +293,12 @@ func (db *DB) ListenTable(ctx context.Context, opts *ListenTableOptions, callbac
 
 			notification, err := conn.Accept(ctx)
 			if err != nil {
+				if errors.Is(err, ErrListenerClosed) {
+					return // the returned Closer was closed; an orderly shutdown, not an error.
+				}
+
 				if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) {
-					return // may be produced by Close.
+					return // the connection went away underneath us, e.g. the pool was closed.
 				}
 
 				if callback(evt, err) != nil {

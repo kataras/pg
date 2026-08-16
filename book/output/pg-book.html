@@ -5259,7 +5259,7 @@ response body.</p>
 
 <h2 id="ch10-other-exported-sentinels">Other Exported Sentinels</h2>
 
-<p>Three more exported sentinel errors live outside <code>errors.go</code>, each
+<p>Four more exported sentinel errors live outside <code>errors.go</code>, each
 tied to the specific feature it signals:</p>
 
 <table>
@@ -5289,14 +5289,21 @@ tied to the specific feature it signals:</p>
 <td><code>listener.go</code></td>
 <td><code>Listener.Accept</code> receives a notification whose payload is empty; see <a href="12-listen-notify.md">Chapter 12</a>.</td>
 </tr>
+
+<tr>
+<td><code>ErrListenerClosed</code></td>
+<td><code>listener.go</code></td>
+<td><code>Listener.Accept</code> is called on a closed listener, or <code>Close</code> interrupts a wait already in progress; see <a href="12-listen-notify.md">Chapter 12</a>.</td>
+</tr>
 </tbody>
 </table>
-<p>All three are plain <code>errors.New</code> values, compared with <code>errors.Is</code>
+<p>All four are plain <code>errors.New</code> values, compared with <code>errors.Is</code>
 like any other sentinel; none of them carries a SQLSTATE, since none
 of them represents a PostgreSQL-side condition. <code>ErrIntentionalRollback</code>
-and <code>ErrIsReadOnly</code> are pg&rsquo;s own control-flow signals, and
-<code>ErrEmptyPayload</code> reports a client-side observation about a
-notification payload, not something the server itself rejected.</p>
+and <code>ErrIsReadOnly</code> are pg&rsquo;s own control-flow signals, <code>ErrEmptyPayload</code>
+reports a client-side observation about a notification payload, and
+<code>ErrListenerClosed</code> marks an orderly shutdown; none of them is
+something the server itself rejected.</p>
 
 <h2 id="ch10-sqlstate-lookup-table">SQLSTATE Lookup Table</h2>
 
@@ -5399,8 +5406,9 @@ relevant name/value alongside a <code>bool</code>.</li>
 its own returned errors in a <code>ConstraintError</code>; you call
 <code>AsConstraintError</code> at the layer that turns a database error into a
 response.</li>
-<li><code>ErrIntentionalRollback</code>, <code>ErrIsReadOnly</code> and <code>ErrEmptyPayload</code> are
-pg&rsquo;s own control-flow sentinels, unrelated to any SQLSTATE.</li>
+<li><code>ErrIntentionalRollback</code>, <code>ErrIsReadOnly</code>, <code>ErrEmptyPayload</code> and
+<code>ErrListenerClosed</code> are pg&rsquo;s own control-flow sentinels, unrelated
+to any SQLSTATE.</li>
 </ul>
 
 <h2 id="ch10-further-reading">Further Reading</h2>
@@ -5936,8 +5944,23 @@ destroys it instead of handing a connection that is still subscribed
 to some channel to the next caller who acquires it for something
 unrelated.</p>
 
+<p><code>Close</code> is also safe to call while another goroutine sits inside
+<code>Accept</code>, which is the ordinary shape of a listener: one goroutine
+loops on <code>Accept</code>, and something else stops it. That case needs more
+than the compare-and-swap, because <code>Accept</code> and <code>Close</code> drive the same
+<code>pgconn.PgConn</code>, and pgx documents that type as unsafe for concurrent
+use. So <code>Close</code> cancels the in-flight wait first, and only once
+<code>Accept</code> has handed the connection back does it run <code>UNLISTEN</code> and
+release. The interrupted <code>Accept</code> returns <code>ErrListenerClosed</code>. Calling
+<code>Accept</code> again after that returns <code>ErrListenerClosed</code> too, rather than
+reading from a connection the pool has already given to somebody else.</p>
+
 <h2 id="ch12-notification-erremptypayload-and-unmarshalnotification">Notification, ErrEmptyPayload and UnmarshalNotification</h2>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">Notification</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">pgconn</span><span class="p">.</span><span class="nx">Notification</span><span class="w"> </span><span class="c1">// Channel, Payload, PID.</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">var</span><span class="w"> </span><span class="nx">ErrEmptyPayload</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">errors</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;empty payload&#34;</span><span class="p">)</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="nx">UnmarshalNotification</span><span class="p">[</span><span class="nx">T</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Notification</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">T</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span></div></code></pre></figure>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">Notification</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">pgconn</span><span class="p">.</span><span class="nx">Notification</span><span class="w"> </span><span class="c1">// Channel, Payload, PID.</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">var</span><span class="w"> </span><span class="nx">ErrEmptyPayload</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">errors</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;empty payload&#34;</span><span class="p">)</span></div><div class="cl"><span class="kd">var</span><span class="w"> </span><span class="nx">ErrListenerClosed</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">errors</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;listener closed&#34;</span><span class="p">)</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="nx">UnmarshalNotification</span><span class="p">[</span><span class="nx">T</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Notification</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">T</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span></div></code></pre></figure>
+<p><code>ErrListenerClosed</code> reports an orderly shutdown rather than a failure,
+so a listen loop should return on it instead of logging it as an
+error:</p>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="k">for</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">notification</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nf">Accept</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span></div><div class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">errors</span><span class="p">.</span><span class="nf">Is</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">ErrListenerClosed</span><span class="p">)</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="c1">// somebody called Close; nothing went wrong.</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;accept: %w&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl"><span class="w">    </span><span class="c1">// ...</span></div><div class="cl"><span class="p">}</span></div></code></pre></figure>
 <p><code>UnmarshalNotification</code> is the counterpart to <code>Notify</code>&rsquo;s JSON-encoding
 branch: it JSON-decodes <code>n.Payload</code> into <code>T</code> and returns it.</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">Sender</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="s">`</span><span class="s">json:&#34;sender&#34;</span><span class="s">`</span></div><div class="cl"><span class="w">    </span><span class="nx">Body</span><span class="w">   </span><span class="kt">string</span><span class="w"> </span><span class="s">`</span><span class="s">json:&#34;body&#34;</span><span class="s">`</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">notification</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nf">Accept</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span></div><div class="cl"><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">payload</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">UnmarshalNotification</span><span class="p">[</span><span class="nx">Message</span><span class="p">]</span><span class="p">(</span><span class="nx">notification</span><span class="p">)</span></div><div class="cl"><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">Sender</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span></div></code></pre></figure>
@@ -6096,8 +6119,10 @@ reconnect for you.</strong> If the connection underlying a <code>Listener</code>
 dropped (a network blip, a server restart, the connection being
 killed), any notification sent while it was down is gone; there is
 nothing to replay it from. <code>ListenTable</code>&rsquo;s internal loop recognizes
-<code>io.ErrUnexpectedEOF</code> and <code>net.ErrClosed</code> as an intentional close
-and simply ends the goroutine, but any other error is handed to
+<code>ErrListenerClosed</code> (the returned <code>Closer</code> was closed) and
+<code>io.ErrUnexpectedEOF</code>/<code>net.ErrClosed</code> (the connection went away
+underneath it) as an intentional close and simply ends the
+goroutine, but any other error is handed to
 <code>callback</code>, and it is <code>callback</code>&rsquo;s decision whether to stop
 (returning non-nil) or keep looping (returning <code>nil</code>). Since
 <code>Accept</code> on an already-broken connection tends to fail immediately
@@ -6120,7 +6145,9 @@ connected at the moment of a <code>NOTIFY</code> never receives it.</li>
 <li><code>DB.Listen</code> acquires a dedicated pooled connection and returns a
 <code>*Listener</code>; <code>Accept</code> blocks for the next notification,
 <code>ErrEmptyPayload</code> flags an empty one, and <code>Close</code> unsubscribes and
-releases the connection, safely callable more than once.</li>
+releases the connection, safely callable more than once and while
+another goroutine waits in <code>Accept</code>, which then reports
+<code>ErrListenerClosed</code>.</li>
 <li><code>DB.Notify</code> sends a <code>string</code>/<code>[]byte</code> payload as-is or JSON-encodes
 anything else; <code>UnmarshalNotification[T]</code> decodes a JSON payload
 back into <code>T</code>. Channel names are quoted with <code>QuoteIdentifier</code> so

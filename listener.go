@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"sync/atomic"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -25,6 +26,18 @@ type Listener struct {
 
 	channel string
 	closed  atomic.Bool
+
+	// mu serializes actual use of conn. The underlying pgconn.PgConn is not safe for
+	// concurrent use, and Accept and Close are routinely called from different goroutines:
+	// DB.ListenTable returns the caller the same Listener its background goroutine is
+	// parked in Accept on.
+	//
+	// Accept holds mu for the whole, potentially unbounded WaitForNotification call, so
+	// Close cannot simply wait for it: it cancels closeCtx first (which unblocks Accept)
+	// and only then acquires mu.
+	mu          sync.Mutex
+	closeCtx    context.Context
+	closeCancel context.CancelFunc
 }
 
 var _ Closer = (*Listener)(nil)
@@ -32,10 +45,45 @@ var _ Closer = (*Listener)(nil)
 // ErrEmptyPayload is returned when the notification payload is empty.
 var ErrEmptyPayload = errors.New("empty payload")
 
+// ErrListenerClosed is returned by Listener.Accept when the listener has been closed, either
+// before the call or while it was waiting for a notification. It reports an orderly shutdown,
+// not a failure: a listen loop should return on it rather than log it.
+var ErrListenerClosed = errors.New("listener closed")
+
 // Accept waits for a notification and returns it.
+//
+// Accept is safe to call while another goroutine calls Close: a Close concurrent with a
+// waiting Accept unblocks it and Accept then reports ErrListenerClosed. Concurrent Accept
+// calls on the same Listener are serialized, as a connection can only serve one waiter.
 func (l *Listener) Accept(ctx context.Context) (*Notification, error) {
+	if l.closed.Load() {
+		return nil, ErrListenerClosed
+	}
+
+	// WaitForNotification blocks until a notification arrives, which may be never; wire
+	// Close's cancellation into this call's context so Close does not have to wait for one.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	stop := context.AfterFunc(l.closeCtx, cancel)
+	defer stop()
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// Re-check under mu: Close may have won the race for it and already released the
+	// connection back to the pool, in which case it is no longer ours to read from.
+	if l.closed.Load() {
+		return nil, ErrListenerClosed
+	}
+
 	nf, err := l.conn.Conn().WaitForNotification(ctx)
 	if err != nil {
+		if l.closed.Load() {
+			// The wait was cancelled by Close, not by the caller's own context.
+			return nil, ErrListenerClosed
+		}
+
 		return nil, err
 	}
 
@@ -58,6 +106,10 @@ func (l *Listener) Accept(ctx context.Context) (*Notification, error) {
 //
 // Close is safe to call multiple times (and concurrently): only the first call does any work,
 // subsequent calls are no-ops that return nil.
+//
+// Close is also safe to call while another goroutine is waiting inside Accept: it first
+// cancels that wait, then takes the connection over once Accept has stopped using it. The
+// interrupted Accept reports ErrListenerClosed.
 func (l *Listener) Close(ctx context.Context) error {
 	if l == nil {
 		return nil
@@ -68,6 +120,13 @@ func (l *Listener) Close(ctx context.Context) error {
 	}
 
 	if l.closed.CompareAndSwap(false, true) {
+		// Unblock an in-flight Accept, then wait for it to hand the connection back:
+		// UNLISTEN and Release below must not run concurrently with it.
+		l.closeCancel()
+
+		l.mu.Lock()
+		defer l.mu.Unlock()
+
 		query := "UNLISTEN " + QuoteIdentifier(l.channel)
 		_, err := l.conn.Exec(ctx, query)
 		if err != nil {

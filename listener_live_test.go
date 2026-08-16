@@ -172,6 +172,69 @@ func TestListenTableEmptyPayloadNoCrash(t *testing.T) {
 	}
 }
 
+// TestListenerCloseWhileAccepting verifies that Listener.Close is safe to call while another
+// goroutine is blocked inside Listener.Accept on the same connection. This is not an exotic
+// case: DB.ListenTable hands the caller the very Listener its background goroutine sits in
+// Accept on, so "defer closer.Close(ctx)" always takes this path.
+//
+// Before the fix, Accept and Close drove the same *pgxpool.Conn with no synchronization at all.
+// pgconn.PgConn is documented as unsafe for concurrent use (PgConn.lock and PgConn.IsBusy
+// read and write pgConn.status as a plain field), so this tripped the race detector under
+// -race, and without -race it still misbehaved: Close's UNLISTEN got a "conn busy" error back,
+// took the error branch, and hard-closed the pooled connection so the pool had to destroy it
+// instead of recycling it -- on every single ListenTable shutdown.
+func TestListenerCloseWhileAccepting(t *testing.T) {
+	db, err := openEmptyTestConnection()
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+
+	const channel = "test_listener_close_while_accepting"
+
+	listener, err := db.Listen(context.Background(), channel)
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+
+	accepted := make(chan error, 1)
+	go func() {
+		// No notification is ever sent on this channel, so this call is parked inside
+		// pgconn.WaitForNotification until Close unblocks it.
+		_, acceptErr := listener.Accept(context.Background())
+		accepted <- acceptErr
+	}()
+
+	// Best-effort margin for the goroutine above to actually reach WaitForNotification; the
+	// assertions below hold either way, this just makes the interesting interleaving the
+	// likely one rather than the rare one.
+	time.Sleep(500 * time.Millisecond)
+
+	if err = listener.Close(context.Background()); err != nil {
+		t.Fatalf("close while another goroutine is in Accept: expected nil error, got: %v", err)
+	}
+
+	select {
+	case acceptErr := <-accepted:
+		if !errors.Is(acceptErr, ErrListenerClosed) {
+			t.Fatalf("expected the in-flight Accept to report ErrListenerClosed, got: %v", acceptErr)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Close did not unblock the in-flight Accept")
+	}
+
+	// Accept after Close must report the closed listener instead of touching a connection
+	// that has already been released back to the pool.
+	if _, err = listener.Accept(context.Background()); !errors.Is(err, ErrListenerClosed) {
+		t.Fatalf("expected Accept after Close to report ErrListenerClosed, got: %v", err)
+	}
+
+	// The pool is still usable: Close released the connection rather than destroying it.
+	if _, err = db.Exec(context.Background(), "SELECT 1;"); err != nil {
+		t.Fatalf("pool unusable after listener close: %v", err)
+	}
+}
+
 // TestPrepareListenTableOnTransaction verifies that PrepareListenTable works when called on a
 // transaction-scoped *DB (obtained from InTransaction/Begin). Before the fix, DB.clone dropped
 // the tableChangeNotifyOnceMutex field, so a transaction-scoped *DB nil-panicked the first time

@@ -172,14 +172,43 @@ destroys it instead of handing a connection that is still subscribed
 to some channel to the next caller who acquires it for something
 unrelated.
 
+`Close` is also safe to call while another goroutine sits inside
+`Accept`, which is the ordinary shape of a listener: one goroutine
+loops on `Accept`, and something else stops it. That case needs more
+than the compare-and-swap, because `Accept` and `Close` drive the same
+`pgconn.PgConn`, and pgx documents that type as unsafe for concurrent
+use. So `Close` cancels the in-flight wait first, and only once
+`Accept` has handed the connection back does it run `UNLISTEN` and
+release. The interrupted `Accept` returns `ErrListenerClosed`. Calling
+`Accept` again after that returns `ErrListenerClosed` too, rather than
+reading from a connection the pool has already given to somebody else.
+
 ## Notification, ErrEmptyPayload and UnmarshalNotification
 
 ```go
 type Notification = pgconn.Notification // Channel, Payload, PID.
 
 var ErrEmptyPayload = errors.New("empty payload")
+var ErrListenerClosed = errors.New("listener closed")
 
 func UnmarshalNotification[T any](n *Notification) (T, error)
+```
+
+`ErrListenerClosed` reports an orderly shutdown rather than a failure,
+so a listen loop should return on it instead of logging it as an
+error:
+
+```go
+for {
+    notification, err := conn.Accept(ctx)
+    if errors.Is(err, pg.ErrListenerClosed) {
+        return // somebody called Close; nothing went wrong.
+    }
+    if err != nil {
+        return fmt.Errorf("accept: %w", err)
+    }
+    // ...
+}
 ```
 
 `UnmarshalNotification` is the counterpart to `Notify`'s JSON-encoding
@@ -456,8 +485,10 @@ directly from PostgreSQL's own design:
   dropped (a network blip, a server restart, the connection being
   killed), any notification sent while it was down is gone; there is
   nothing to replay it from. `ListenTable`'s internal loop recognizes
-  `io.ErrUnexpectedEOF` and `net.ErrClosed` as an intentional close
-  and simply ends the goroutine, but any other error is handed to
+  `ErrListenerClosed` (the returned `Closer` was closed) and
+  `io.ErrUnexpectedEOF`/`net.ErrClosed` (the connection went away
+  underneath it) as an intentional close and simply ends the
+  goroutine, but any other error is handed to
   `callback`, and it is `callback`'s decision whether to stop
   (returning non-nil) or keep looping (returning `nil`). Since
   `Accept` on an already-broken connection tends to fail immediately
@@ -478,7 +509,9 @@ directly from PostgreSQL's own design:
 - `DB.Listen` acquires a dedicated pooled connection and returns a
   `*Listener`; `Accept` blocks for the next notification,
   `ErrEmptyPayload` flags an empty one, and `Close` unsubscribes and
-  releases the connection, safely callable more than once.
+  releases the connection, safely callable more than once and while
+  another goroutine waits in `Accept`, which then reports
+  `ErrListenerClosed`.
 - `DB.Notify` sends a `string`/`[]byte` payload as-is or JSON-encodes
   anything else; `UnmarshalNotification[T]` decodes a JSON payload
   back into `T`. Channel names are quoted with `QuoteIdentifier` so

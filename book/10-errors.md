@@ -287,7 +287,7 @@ response body.
 
 ## Other Exported Sentinels
 
-Three more exported sentinel errors live outside `errors.go`, each
+Four more exported sentinel errors live outside `errors.go`, each
 tied to the specific feature it signals:
 
 | Sentinel | Declared in | Returned when |
@@ -295,13 +295,15 @@ tied to the specific feature it signals:
 | `ErrIntentionalRollback` | `db.go` | returned from the function passed to `InTransaction`/`InTransactionRetry` to force a rollback without treating it as a failure; see [Chapter 9](09-transactions.md). |
 | `ErrIsReadOnly` | `repository.go` | `Repository[T].Insert`/`InsertSingle` is called against a table registered as read-only (e.g. a view). |
 | `ErrEmptyPayload` | `listener.go` | `Listener.Accept` receives a notification whose payload is empty; see [Chapter 12](12-listen-notify.md). |
+| `ErrListenerClosed` | `listener.go` | `Listener.Accept` is called on a closed listener, or `Close` interrupts a wait already in progress; see [Chapter 12](12-listen-notify.md). |
 
-All three are plain `errors.New` values, compared with `errors.Is`
+All four are plain `errors.New` values, compared with `errors.Is`
 like any other sentinel; none of them carries a SQLSTATE, since none
 of them represents a PostgreSQL-side condition. `ErrIntentionalRollback`
-and `ErrIsReadOnly` are pg's own control-flow signals, and
-`ErrEmptyPayload` reports a client-side observation about a
-notification payload, not something the server itself rejected.
+and `ErrIsReadOnly` are pg's own control-flow signals, `ErrEmptyPayload`
+reports a client-side observation about a notification payload, and
+`ErrListenerClosed` marks an orderly shutdown; none of them is
+something the server itself rejected.
 
 ## SQLSTATE Lookup Table
 
@@ -345,8 +347,9 @@ plain error carrying a `*pgconn.PgError` you can inspect with
   its own returned errors in a `ConstraintError`; you call
   `AsConstraintError` at the layer that turns a database error into a
   response.
-- `ErrIntentionalRollback`, `ErrIsReadOnly` and `ErrEmptyPayload` are
-  pg's own control-flow sentinels, unrelated to any SQLSTATE.
+- `ErrIntentionalRollback`, `ErrIsReadOnly`, `ErrEmptyPayload` and
+  `ErrListenerClosed` are pg's own control-flow sentinels, unrelated
+  to any SQLSTATE.
 
 ## Further Reading
 

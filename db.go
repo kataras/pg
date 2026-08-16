@@ -588,9 +588,12 @@ func (db *DB) Listen(ctx context.Context, channel string) (*Listener, error) {
 		return nil, err
 	}
 
+	closeCtx, closeCancel := context.WithCancel(context.Background())
 	l := &Listener{
-		conn:    conn,
-		channel: channel,
+		conn:        conn,
+		channel:     channel,
+		closeCtx:    closeCtx,
+		closeCancel: closeCancel,
 	}
 	return l, nil
 }
