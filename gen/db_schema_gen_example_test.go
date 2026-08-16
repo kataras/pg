@@ -31,7 +31,7 @@ func ExampleGenerateSchemaFromDatabase() {
 	}()
 
 	i := ImportOptions{
-		ConnString: "postgres://postgres:admin!123@localhost:5432/test_db?sslmode=disable",
+		ConnString: getTestConnString(),
 		ListTables: pg.ListTablesOptions{
 			Filter: pg.TableFilterFunc(func(table *pg.Table) bool {
 				columnFilter := func(column *pg.Column) bool {
@@ -74,4 +74,18 @@ func ExampleGenerateSchemaFromDatabase() {
 
 	// Output:
 	// OK
+}
+
+// getTestConnString returns the connection string to test against, read from the
+// PG_CONNSTRING environment variable when set. This package (gen) cannot reuse the root
+// pg package's own getTestConnString (package pg, unexported), so this is a small local
+// equivalent: when PG_CONNSTRING is unset or empty, it falls back to the same hardcoded
+// literal this example used before, so CI's postgres service container (see
+// .github/workflows/ci.yml) keeps working unchanged.
+func getTestConnString() string {
+	if override := os.Getenv("PG_CONNSTRING"); override != "" {
+		return override
+	}
+
+	return "postgres://postgres:admin!123@localhost:5432/test_db?sslmode=disable"
 }

@@ -1,0 +1,11 @@
+# Build output of the generator binary itself. The generated book
+# (output/) is committed, so it is NOT listed here: rebuild it with
+# `cd book && go run .` whenever a chapter changes, and commit the result.
+book.exe
+book.test
+*.exe~
+
+.idea
+.vscode
+.DS_Store
+.claude/*

@@ -2,6 +2,7 @@ package desc
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -14,20 +15,18 @@ func BuildUpdateQuery(value any, columnsToUpdate []string, reportNotFound bool, 
 		return "", nil, err
 	}
 
-	shouldUpdateID := false
-	for _, col := range columnsToUpdate {
-		if col == primaryKey.Name {
-			shouldUpdateID = true
-			break
-		}
-	}
+	shouldUpdateID := slices.Contains(columnsToUpdate, primaryKey.Name)
 
 	if len(args) == 1 { // the last one is the id.
 		return "", nil, fmt.Errorf("no arguments found for update, maybe missing struct field tag of \"%s\"", DefaultTag)
 	}
 
 	// build the SQL query using the table definition and its primary key.
-	query := buildUpdateQuery(primaryKey.Table, args, primaryKey.Name, shouldUpdateID, reportNotFound)
+	query, err := buildUpdateQuery(primaryKey.Table, args, primaryKey.Name, shouldUpdateID, reportNotFound)
+	if err != nil {
+		return "", nil, err
+	}
+
 	return query, args.Values(), nil
 }
 
@@ -81,7 +80,13 @@ func extractUpdateArguments(value any, columnsToUpdate []string, primaryKey *Col
 	return args, nil
 }
 
-func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUpdateID bool, reportNotFound bool) string {
+// buildUpdateQuery builds the UPDATE SQL statement. It returns an error, instead of building
+// the query, if a password column's value would be updated via the db-side
+// crypt($N, gen_salt('<PasswordAlg>')) SQL fragment (see buildInsertPassword) and PasswordAlg
+// fails validatePasswordAlg; this mirrors the same guard on the insert paths in insert_query.go
+// (BuildInsertQuery/BuildBulkInsertQuery), so every crypt-emitting builder validates PasswordAlg
+// before it's interpolated into SQL.
+func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUpdateID bool, reportNotFound bool) (string, error) {
 	var b strings.Builder
 
 	b.WriteString(`UPDATE "` + td.Name + `" SET `)
@@ -109,6 +114,10 @@ func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUp
 			if td.PasswordHandler.canEncrypt() {
 				// handled at args state.
 			} else {
+				if err := validatePasswordAlg(); err != nil {
+					return "", err
+				}
+
 				paramName = buildInsertPassword(paramName)
 			}
 		}
@@ -128,5 +137,5 @@ func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUp
 
 	b.WriteByte(';')
 
-	return b.String()
+	return b.String(), nil
 }

@@ -61,34 +61,69 @@ func (t *ConstraintType) Scan(src any) error {
 
 // Constraint is a type that represents a constraint.
 type Constraint struct {
-	TableName  string
+	// TableName is the name of the table this constraint belongs to.
+	TableName string
+	// ColumnName is the name of the column this constraint applies to. For a plain
+	// (non-unique) index row it is empty immediately after scanning (see ListConstraints),
+	// but Build, which ListConstraints always calls right after scanning, fills it in
+	// from the constraint definition for the common single-column index case; it stays
+	// empty only when the definition doesn't match Build's simple single-column index
+	// pattern (e.g. a composite/multi-column index).
 	ColumnName string
 
+	// ConstraintName is the name of the constraint, as reported by the database.
 	ConstraintName string
+	// ConstraintType classifies the constraint (primary key, unique, foreign key, check
+	// or plain index) and determines which of Unique, Check and ForeignKey, if any, Build
+	// populates.
 	ConstraintType ConstraintType
 
+	// IndexType is the access method (btree, gin, ...) backing the constraint's index,
+	// when ConstraintType is IndexConstraintType.
 	IndexType IndexType
 
-	Unique     *UniqueConstraint
-	Check      *CheckConstraint
+	// Unique holds the parsed definition when ConstraintType is UniqueConstraintType.
+	Unique *UniqueConstraint
+	// Check holds the parsed definition when ConstraintType is CheckConstraintType.
+	Check *CheckConstraint
+	// ForeignKey holds the parsed definition when ConstraintType is ForeignKeyConstraintType.
 	ForeignKey *ForeignKeyConstraint
 	// Primary does not need it, as it's already described by table name and column name fields.
+
+	// rawDefinition holds the original pg_get_constraintdef() output this Constraint was
+	// built from (set by Build). It's kept around so String and BuildColumn can report the
+	// offending SQL when the definition failed to parse into Unique/Check/ForeignKey (e.g.
+	// composite/multi-column foreign keys, multiline CHECK expressions or schema-qualified
+	// references) instead of dereferencing a nil sub-struct.
+	rawDefinition string
 }
 
 // String implements the fmt.Stringer interface.
+//
+// If the constraint's definition could not be parsed into its typed sub-struct (Unique, Check
+// or ForeignKey is nil: see Build/parseCheckConstraint/parseForeignKeyConstraint), String
+// returns a placeholder built from the raw, unparsed definition instead of panicking.
 func (c *Constraint) String() string {
 	switch c.ConstraintType {
 	case PrimaryKeyConstraintType:
 		return fmt.Sprintf("PRIMARY KEY (%s)", c.ColumnName)
 	case UniqueConstraintType:
-		if len(c.Unique.Columns) == 0 {
+		if c.Unique == nil || len(c.Unique.Columns) == 0 {
 			return fmt.Sprintf("UNIQUE (%s)", c.ColumnName)
 		}
 
 		return fmt.Sprintf("UNIQUE (%s)", strings.Join(c.Unique.Columns, ", "))
 	case CheckConstraintType:
+		if c.Check == nil {
+			return fmt.Sprintf("CHECK (<unparsed: %s>)", c.rawDefinition)
+		}
+
 		return fmt.Sprintf("CHECK (%s)", c.Check.Expression)
 	case ForeignKeyConstraintType:
+		if c.ForeignKey == nil {
+			return fmt.Sprintf("FOREIGN KEY (%s) REFERENCES <unparsed: %s>", c.ColumnName, c.rawDefinition)
+		}
+
 		return fmt.Sprintf("FOREIGN KEY (%s) REFERENCES %s (%s)", c.ColumnName, c.ForeignKey.ReferenceTableName, c.ForeignKey.ReferenceColumnName)
 	case IndexConstraintType:
 		return fmt.Sprintf("INDEX (%s)", c.ColumnName)
@@ -99,6 +134,8 @@ func (c *Constraint) String() string {
 
 // Build implements the ColumnBuilder interface.
 func (c *Constraint) Build(constraintDefinition string) {
+	c.rawDefinition = constraintDefinition
+
 	switch c.ConstraintType {
 	case UniqueConstraintType:
 		c.Unique = parseUniqueConstraint(constraintDefinition)
@@ -116,11 +153,23 @@ func (c *Constraint) Build(constraintDefinition string) {
 var _ ColumnBuilder = (*Constraint)(nil)
 
 // BuildColumn implements the ColumnBuilder interface.
+//
+// It returns a descriptive error (naming the constraint and its raw, unparsed definition)
+// instead of panicking, when the constraint's definition could not be parsed into its typed
+// sub-struct (Unique, Check or ForeignKey is nil). That can happen for constraint shapes the
+// parsing regexes don't cover yet, e.g. composite/multi-column foreign keys, multiline CHECK
+// expressions or schema-qualified references; see parseCheckConstraint and
+// parseForeignKeyConstraint. Callers (e.g. DB.ListColumns) must check and propagate this error
+// rather than discard it, since it can be reached at connect time via DB.CheckSchema.
 func (c *Constraint) BuildColumn(column *Column) error {
 	switch c.ConstraintType {
 	case PrimaryKeyConstraintType:
 		column.PrimaryKey = true
 	case UniqueConstraintType:
+		if c.Unique == nil {
+			return fmt.Errorf("pg: constraint %q on %s.%s: unable to parse unique constraint definition: %s", c.ConstraintName, c.TableName, c.ColumnName, c.rawDefinition)
+		}
+
 		if len(c.Unique.Columns) == 0 || (len(c.Unique.Columns) == 1 && c.Unique.Columns[0] == c.ColumnName) {
 			// PostgreSQL auto-generates constraint names as "{table}_{column}_key".
 			// If the name differs, it was explicitly set via unique_index=name.
@@ -134,8 +183,16 @@ func (c *Constraint) BuildColumn(column *Column) error {
 			column.UniqueIndex = c.ConstraintName
 		}
 	case CheckConstraintType:
+		if c.Check == nil {
+			return fmt.Errorf("pg: constraint %q on %s.%s: unable to parse check constraint definition: %s", c.ConstraintName, c.TableName, c.ColumnName, c.rawDefinition)
+		}
+
 		column.CheckConstraint = c.Check.Expression
 	case ForeignKeyConstraintType:
+		if c.ForeignKey == nil {
+			return fmt.Errorf("pg: constraint %q on %s.%s: unable to parse foreign key constraint definition: %s", c.ConstraintName, c.TableName, c.ColumnName, c.rawDefinition)
+		}
+
 		column.ReferenceTableName = c.ForeignKey.ReferenceTableName
 		column.ReferenceColumnName = c.ForeignKey.ReferenceColumnName
 		column.ReferenceOnDelete = c.ForeignKey.OnDelete
@@ -168,10 +225,11 @@ func parseSimpleIndexConstraint(constraintDefinition string) (indexName, tableNa
 
 // UniqueConstraint is a type that represents a unique constraint.
 type UniqueConstraint struct {
-	Columns []string
-	// e.g. UNIQUE (title, source_url) or UNIQUE(name),
+	// Columns holds the names of the columns the unique constraint applies to,
+	// e.g. UNIQUE (title, source_url) or UNIQUE(name).
 	// If length of this slice is one then this is a "unique" of its own column (unique=true),
 	// otherwise is a multi column unique index e.g. "unique_index=uq_blog_posts".
+	Columns []string
 }
 
 // parseUniqueConstraint parses a unique constraint definition.
@@ -203,6 +261,8 @@ func parseUniqueIndexConstraint(constraintDefinition string) []string {
 
 // CheckConstraint is a type that represents a check constraint.
 type CheckConstraint struct {
+	// Expression is the CHECK constraint's boolean SQL expression, with the outer
+	// CHECK(...) wrapper stripped.
 	Expression string
 }
 

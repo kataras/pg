@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/kataras/pg/desc"
 
@@ -74,24 +73,35 @@ type (
 	ColumnFilter = desc.ColumnFilter
 	// DataType is a type alias for desc.DataType.
 	DataType = desc.DataType
-	// TableFilter is a type alias for desc.TableFilter.
+	// TableFilterFunc is a type alias for desc.TableFilterFunc.
 	TableFilterFunc = desc.TableFilterFunc
+	// OnConflict is a type alias for desc.OnConflict: the conflict target (Columns or a named
+	// Constraint) and DO NOTHING/DO UPDATE SET action for Repository.InsertOnConflict and
+	// Repository.InsertSingleOnConflict.
+	OnConflict = desc.OnConflict
 )
 
 // DB represents a database connection that can execute queries and transactions.
 // It wraps a pgxpool.Pool and a pgx.ConnConfig to manage the connection options and the search path.
 // It also holds a reference to a Schema that defines the database schema and migrations.
 type DB struct {
-	Pool              *pgxpool.Pool
+	// Pool is the underlying pgx connection pool this DB executes queries through
+	// (directly, or via its current transaction: see IsTransaction).
+	Pool *pgxpool.Pool
+	// ConnectionOptions is the connection configuration this DB was opened with, as
+	// copied from Pool's config by OpenPool. It should not be mutated by the caller.
 	ConnectionOptions *pgx.ConnConfig
 	searchPath        string
 
 	tx         pgx.Tx
 	dbTxClosed bool
 
-	tableChangeNotifyOnceMutex    *sync.RWMutex
-	tableChangeNotifyFunctionOnce *uint32
-	tableChangeNotifyTriggerOnce  map[string]struct{}
+	// notifyState holds the mutex-guarded, once-only bookkeeping used by PrepareListenTable
+	// to create the table-change notify function and per-table triggers at most once.
+	// It is a single pointer so that clone (Begin/InTransaction/BeginConcurrent) never has to
+	// copy more than one field, which previously left transaction-scoped *DB instances with a
+	// nil mutex. See db_table_listener.go for the tableNotifyState type.
+	notifyState *tableNotifyState
 
 	schema *Schema
 }
@@ -104,6 +114,13 @@ type DB struct {
 type ConnectionOption func(*pgxpool.Config) error
 
 // WithLogger is a ConnectionOption. It sets the logger for the connection pool.
+//
+// It installs a pgx tracelog.TraceLog tracer hardcoded to tracelog.LogLevelTrace, the most
+// verbose level: pgx will log every SQL statement it executes together with all of its bind
+// arguments, including sensitive values such as plaintext passwords (e.g. those passed to
+// SelectByUsernameAndPassword). Do not use WithLogger against a production logger; prefer
+// WithLoggerLevel instead so the verbosity (and therefore what ends up in your logs) can be
+// chosen deliberately.
 var WithLogger = func(logger tracelog.Logger) ConnectionOption {
 	return func(poolConfig *pgxpool.Config) error {
 		tracer := &tracelog.TraceLog{
@@ -116,9 +133,33 @@ var WithLogger = func(logger tracelog.Logger) ConnectionOption {
 	}
 }
 
+// WithLoggerLevel is a ConnectionOption. It sets the logger for the connection pool, same as
+// WithLogger, but lets the caller choose the tracelog.LogLevel instead of WithLogger's hardcoded
+// tracelog.LogLevelTrace.
+//
+// Use a lower level (e.g. tracelog.LogLevelWarn or tracelog.LogLevelError) in production to
+// reduce how much pgx logs, or tracelog.LogLevelNone to disable pgx's tracer logging entirely.
+// Note that pgx still logs the SQL statement and its bind arguments for a failed query at every
+// level down to and including tracelog.LogLevelError; only tracelog.LogLevelNone guarantees that
+// sensitive bind arguments (such as plaintext passwords) are never written to the logger.
+func WithLoggerLevel(logger tracelog.Logger, level tracelog.LogLevel) ConnectionOption {
+	return func(poolConfig *pgxpool.Config) error {
+		tracer := &tracelog.TraceLog{
+			Logger:   logger,
+			LogLevel: level,
+		}
+
+		poolConfig.ConnConfig.Tracer = tracer
+		return nil
+	}
+}
+
 // Open creates a new DB instance by parsing the connection string and establishing a connection pool.
 // It also sets the search path to the one specified in the connection string or to the default one if not specified.
 // It takes a context and a schema as arguments and returns the DB instance or an error if any.
+//
+// For production connections, prefer "sslmode=verify-full" (or, at a minimum,
+// "sslmode=require") over the "sslmode=disable" used in the example below.
 //
 // Example Code:
 //
@@ -142,7 +183,7 @@ var WithLogger = func(logger tracelog.Logger) ConnectionOption {
 func Open(ctx context.Context, schema *Schema, connString string, opts ...ConnectionOption) (*DB, error) {
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open: %w", err)
 	}
 
 	for _, opt := range opts {
@@ -157,7 +198,9 @@ func Open(ctx context.Context, schema *Schema, connString string, opts ...Connec
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("open: %w: full connection string: <%s>", err, connString)
+		// Only safe, non-sensitive fields are included here: never connString (or any part of
+		// it derived from it) as it may hold the plaintext password.
+		return nil, fmt.Errorf("open: host=%s dbname=%s: %w", config.ConnConfig.Host, config.ConnConfig.Database, err)
 	}
 
 	if err := pool.Ping(ctx); err != nil {
@@ -182,13 +225,11 @@ func OpenPool(schema *Schema, pool *pgxpool.Pool) *DB {
 	}
 
 	db := &DB{ // create a new DB instance with the fields
-		Pool:                          pool,       // set the pool field
-		ConnectionOptions:             config,     // set the connection options field
-		searchPath:                    searchPath, // set the search path field
-		schema:                        schema,     // set the schema field
-		tableChangeNotifyOnceMutex:    new(sync.RWMutex),
-		tableChangeNotifyFunctionOnce: new(uint32),
-		tableChangeNotifyTriggerOnce:  make(map[string]struct{}),
+		Pool:              pool,       // set the pool field
+		ConnectionOptions: config,     // set the connection options field
+		searchPath:        searchPath, // set the search path field
+		schema:            schema,     // set the schema field
+		notifyState:       &tableNotifyState{triggers: make(map[string]struct{})},
 	}
 
 	return db // return the DB instance
@@ -203,13 +244,12 @@ func (db *DB) Close() {
 // and returns a new DB pointer to instance.
 func (db *DB) clone(tx pgx.Tx) *DB {
 	clone := &DB{
-		Pool:                          db.Pool,
-		ConnectionOptions:             db.ConnectionOptions,
-		tx:                            tx,
-		schema:                        db.schema,
-		searchPath:                    db.searchPath,
-		tableChangeNotifyFunctionOnce: db.tableChangeNotifyFunctionOnce,
-		tableChangeNotifyTriggerOnce:  db.tableChangeNotifyTriggerOnce,
+		Pool:              db.Pool,
+		ConnectionOptions: db.ConnectionOptions,
+		tx:                tx,
+		schema:            db.schema,
+		searchPath:        db.searchPath,
+		notifyState:       db.notifyState, // shared pointer: safe to copy as-is, unlike the old split fields.
 	}
 
 	return clone
@@ -227,15 +267,26 @@ func (db *DB) Schema() *Schema {
 }
 
 // ErrIntentionalRollback is an error that can be returned by a transaction function to rollback the transaction.
+// When returned from the function passed to DB.InTransaction (or Repository.InTransaction), it makes the
+// transaction roll back and InTransaction itself returns nil on a successful rollback, or the rollback
+// error if the rollback fails.
 var ErrIntentionalRollback = errors.New("skip error: intentional rollback")
 
 // InTransaction runs a function within a database transaction and commits or rolls back depending on
 // the error value returned by the function.
+//   - If fn returns nil, the transaction is committed and any commit error is returned to the caller.
+//   - If fn returns ErrIntentionalRollback, the transaction is rolled back and InTransaction returns nil
+//     on a successful rollback, or the rollback error otherwise.
+//   - If fn returns any other non-nil error, the transaction is rolled back and that error is returned;
+//     if the rollback itself also fails, both errors are joined (via errors.Join) so callers can still
+//     inspect either one with errors.Is/errors.As.
+//   - If fn panics, the transaction is rolled back and the panic is re-thrown.
+//
 // Note that:
 // After the first error in the transaction, the transaction is rolled back.
 // After the first error in query execution, the transaction is aborted and
 // no new commands should be sent through the same transaction.
-func (db *DB) InTransaction(ctx context.Context, fn func(*DB) error) error {
+func (db *DB) InTransaction(ctx context.Context, fn func(*DB) error) (err error) {
 	if db.IsTransaction() {
 		return fn(db)
 	}
@@ -257,7 +308,7 @@ func (db *DB) InTransaction(ctx context.Context, fn func(*DB) error) error {
 
 			rollbackErr := tx.Rollback(ctx)
 			if rollbackErr != nil {
-				err = fmt.Errorf("%w: %s", err, rollbackErr.Error())
+				err = errors.Join(err, rollbackErr)
 			}
 		} else {
 			err = tx.Commit(ctx)
@@ -407,6 +458,25 @@ func (db *DB) QueryBoolean(ctx context.Context, query string, args ...any) (ok b
 	return
 }
 
+// Count executes a query that returns a single numeric value, typically a COUNT(*) or other
+// aggregate, and returns it as an int64. A query that yields no rows (e.g. a COUNT wrapped in
+// a GROUP BY that has nothing to group) counts as zero: ErrNoRows is swallowed and (0, nil) is
+// returned instead of forcing every caller to special-case it.
+func (db *DB) Count(ctx context.Context, query string, args ...any) (int64, error) {
+	var count int64
+
+	err := db.QueryRow(ctx, query, args...).Scan(&count)
+	if err != nil {
+		if IsErrNoRows(err) {
+			return 0, nil
+		}
+
+		return 0, err
+	}
+
+	return count, nil
+}
+
 // Exec executes SQL. The query can be either a prepared statement name or an SQL string.
 // Arguments should be referenced positionally from the sql "query" string as $1, $2, etc.
 func (db *DB) Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
@@ -498,13 +568,20 @@ func (db *DB) ExecFiles(ctx context.Context, fileReader interface {
 //
 //		fmt.Printf("channel: %s, payload: %s\n", notification.Channel, notification.Payload)
 //	}
+//
+// The channel name is quoted with QuoteIdentifier before being embedded in the LISTEN
+// statement. This makes Listen safe against SQL injection from a caller-supplied channel
+// and also makes it consistent with Notify/pg_notify: an unquoted, unescaped LISTEN channel
+// is folded to lowercase by Postgres while pg_notify's channel argument is not, so without
+// quoting here a mixed-case channel passed to Listen would never match notifications sent
+// via Notify.
 func (db *DB) Listen(ctx context.Context, channel string) (*Listener, error) {
 	conn, err := db.Pool.Acquire(ctx) // Always on top.
 	if err != nil {
 		return nil, err
 	}
 
-	query := `LISTEN ` + channel
+	query := "LISTEN " + QuoteIdentifier(channel)
 	_, err = conn.Exec(ctx, query)
 	if err != nil {
 		conn.Release()
@@ -536,21 +613,44 @@ func (db *DB) Notify(ctx context.Context, channel string, payload any) error {
 // Available channels:
 // - Any custom one
 // - * (for all)
+//
+// The channel is quoted with QuoteIdentifier before being embedded in the UNLISTEN statement,
+// since UNLISTEN's channel argument is a statement-level identifier and cannot be passed as a
+// bind parameter. The special "*" wildcard is emitted as-is (unquoted), matching the "for all"
+// behavior documented above; quoting it would instead target a channel literally named "*".
+//
+// Note that Unlisten executes on whichever connection the pool hands out for this call, which
+// is not necessarily the connection a prior Listen call is subscribed on. To unsubscribe a
+// specific Listener (and its specific connection), call Listener.Close instead.
 func (db *DB) Unlisten(ctx context.Context, channel string) error {
-	query := `SELECT UNLISTEN $1;`
-	_, err := db.Exec(ctx, query, channel)
+	target := channel
+	if channel != "*" { // "*" (UNLISTEN all channels) is a keyword-like target, not an identifier to quote.
+		target = QuoteIdentifier(channel)
+	}
+
+	query := "UNLISTEN " + target
+	_, err := db.Exec(ctx, query)
 	return err
 }
 
 // UpdateJSONB updates a JSONB column (full or partial) in the database by building and executing an
 // SQL query based on the provided values and the given tableName and columnName.
 // The values parameter is a map of key-value pairs where the key is the json field name and the value is its new value,
-// new keys are accepted. Note that tableName and columnName are not escaped.
+// new keys are accepted. The tableName and columnName are resolved against the DB's schema first:
+// an unknown table or column returns a descriptive error instead of reaching SQL, and the table,
+// column and primary key names are all quoted with QuoteIdentifier before being embedded in the
+// generated UPDATE statement.
 func (db *DB) UpdateJSONB(ctx context.Context, tableName, columnName, rowID string, values map[string]any, fieldsToUpdate []string) (int64, error) {
 	td, err := db.schema.GetByTableName(tableName)
 	if err != nil {
 		return 0, err
 	}
+
+	col := td.GetColumnByName(columnName)
+	if col == nil {
+		return 0, fmt.Errorf("update jsonb: unknown column %q on table %q", columnName, tableName)
+	}
+
 	primaryKey, ok := td.PrimaryKey()
 	if !ok {
 		return 0, fmt.Errorf("primary key is required in order to perform update jsonb on table: %s", tableName)
@@ -558,6 +658,10 @@ func (db *DB) UpdateJSONB(ctx context.Context, tableName, columnName, rowID stri
 
 	var (
 		tag pgconn.CommandTag
+
+		quotedTable      = QuoteIdentifier(td.Name)
+		quotedColumn     = QuoteIdentifier(col.Name)
+		quotedPrimaryKey = QuoteIdentifier(primaryKey.Name)
 	)
 
 	// We could extract the id from the column and do a select based on that but let's keep things simple and do it per row id.
@@ -619,11 +723,11 @@ func (db *DB) UpdateJSONB(ctx context.Context, tableName, columnName, rowID stri
 			}
 		}
 
-		query := fmt.Sprintf("UPDATE %s SET %s = %s || $1 WHERE %s = $2;", tableName, columnName, columnName, primaryKey.Name)
+		query := fmt.Sprintf("UPDATE %s SET %s = %s || $1 WHERE %s = $2;", quotedTable, quotedColumn, quotedColumn, quotedPrimaryKey)
 		tag, err = db.Exec(ctx, query, values, rowID)
 	} else {
 		// Full Update.
-		query := fmt.Sprintf("UPDATE %s SET %s = $1 WHERE %s = $2;", tableName, columnName, primaryKey.Name)
+		query := fmt.Sprintf("UPDATE %s SET %s = $1 WHERE %s = $2;", quotedTable, quotedColumn, quotedPrimaryKey)
 		tag, err = db.Exec(ctx, query, values, rowID)
 	}
 	if err != nil {

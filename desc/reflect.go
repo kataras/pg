@@ -19,7 +19,7 @@ func implementsScanner(typ reflect.Type) bool {
 // otherwise returns the "typ" as it is.
 func IndirectType(typ reflect.Type) reflect.Type {
 	switch typ.Kind() {
-	case reflect.Ptr, reflect.Array, reflect.Chan, reflect.Map, reflect.Slice:
+	case reflect.Pointer, reflect.Array, reflect.Chan, reflect.Map, reflect.Slice:
 		return typ.Elem()
 	}
 	return typ
@@ -58,7 +58,7 @@ func isSpecialJSONStructure(field reflect.StructField) bool {
 // lookupStructFields takes a reflect.Type that represents a struct and a parent index slice
 // and returns a slice of reflect.StructField that represents the exported fields of the struct.
 func lookupStructFields(typ reflect.Type, parentIndex []int) (fields []reflect.StructField) {
-	for i := 0; i < typ.NumField(); i++ { // loop over all the fields of the struct
+	for i := range typ.NumField() { // loop over all the fields of the struct
 		field := typ.Field(i)    // get the i-th field
 		if field.PkgPath != "" { // skip unexported fields (they have a non-empty package path)
 			continue

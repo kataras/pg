@@ -38,6 +38,9 @@ func (t IndexType) String() string {
 	return fmt.Sprintf("IndexType(unexpected %d)", t) // otherwise, return a formatted string with the numeric value
 }
 
+// Scan implements the sql.Scanner interface. A nil src or empty string leaves t unchanged;
+// any other src must be a string matching one of the known index type names (see
+// indexTypeText), or Scan returns an error.
 func (t *IndexType) Scan(src any) error {
 	if src == nil {
 		return nil

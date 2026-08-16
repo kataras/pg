@@ -1,3 +1,11 @@
+// Package gen generates Go source code from a PostgreSQL database schema or from a
+// registered pg.Schema, so that hand-writing struct definitions and column constants is
+// not required. GenerateSchemaFromDatabase connects to a live database, converts its
+// tables to pg.Table definitions (via pg.DB.ListTables) and writes one Go struct per table
+// plus a schema.go that registers them all. GenerateColumnsFromSchema instead starts from
+// an already-registered pg.Schema and writes a package of typed column-name constants,
+// useful for building type-safe queries. Both generators are driven by an ExportOptions
+// value that controls the output directory, file naming and package layout.
 package gen
 
 import (
@@ -18,30 +26,44 @@ import (
 )
 
 // GoImportsTool is the name of the tool that will be used to format the generated code.
+//
+// It is resolved with exec.LookPath against the current process's PATH and, if found,
+// invoked directly on the generated output directory. This is a trusted developer-tooling
+// knob: it is meant to be set by the developer running the code generator locally or in
+// CI, never derived from untrusted input (e.g. database contents or network responses).
 var GoImportsTool = "goimports"
 
-// ExportOptions is the options for the schema export.
-// Used in GenerateSchemaFromDatabase and GenerateColumnsFromSchema.
+// ImportOptions is the options for importing (reading) the source database schema that
+// GenerateSchemaFromDatabase generates Go code from.
 type ImportOptions struct {
+	// ConnString is the PostgreSQL connection string GenerateSchemaFromDatabase opens to
+	// read the source schema from. See pg.Open for its accepted formats.
 	ConnString string
 
+	// ListTables customizes which tables are read and how their columns are resolved
+	// into Go field types; it is passed as-is to pg.DB.ListTables.
 	ListTables pg.ListTablesOptions
 }
 
-// TODO: Add support for base-type entities.
-// Make base classes, e.g.
-// Accept:
-// { "TargetDater": ["source_id", "target_date"],
-// "Base": "id", "created_at", "updated_at"] }.
-//
-// Output:
-// $ROOT_DIR/base/target_dater.go
-// $ROOT_DIR/base/base.go
-//
-// And on each table which contains these columns,
-// replace the column printing with the base.TargetDater and/or base.Base
-// and import this 'base' package to each table's file.
+// GenerateSchemaFromDatabase connects to the database identified by i.ConnString, reads
+// its tables (via pg.DB.ListTables, filtered by i.ListTables) and writes one Go source
+// file per table plus a schema.go that registers all of them under a pg.Schema, laid out
+// according to e. It also runs goimports (see GoImportsTool) over e.RootDir afterwards, if
+// the tool is found on PATH.
 func GenerateSchemaFromDatabase(ctx context.Context, i ImportOptions, e ExportOptions) error {
+	// TODO: Add support for base-type entities.
+	// Make base classes, e.g.
+	// Accept:
+	// { "TargetDater": ["source_id", "target_date"],
+	// "Base": "id", "created_at", "updated_at"] }.
+	//
+	// Output:
+	// $ROOT_DIR/base/target_dater.go
+	// $ROOT_DIR/base/base.go
+	//
+	// And on each table which contains these columns,
+	// replace the column printing with the base.TargetDater and/or base.Base
+	// and import this 'base' package to each table's file.
 	if err := e.apply(); err != nil {
 		return err
 	}
@@ -89,6 +111,10 @@ func GenerateSchemaFromDatabase(ctx context.Context, i ImportOptions, e ExportOp
 	}
 
 	for _, td := range tables {
+		if err := validateTableFileName(td.Name); err != nil {
+			return fmt.Errorf("table: %s: %w", td.Name, err)
+		}
+
 		data, err := generateTable(e.GetPackageName(td.Name), td)
 		if err != nil {
 			return fmt.Errorf("generate table: %s: %w", td.Name, err)
@@ -99,7 +125,9 @@ func GenerateSchemaFromDatabase(ctx context.Context, i ImportOptions, e ExportOp
 			continue
 		}
 
-		mkdir(filename)
+		if err = mkdir(filename); err != nil {
+			return fmt.Errorf("mkdir: %s: %w", filename, err)
+		}
 
 		err = os.WriteFile(filename, data, e.FileMode)
 		if err != nil {
@@ -158,7 +186,7 @@ e := gen.ExportOptions {
 
 err := gen.GenerateSchemaFromDatabase(context.Background(), i, e)
 // [handle error...]
-`, len(columnsTypeMissingLines), strings.Join(columnsTypeMissingLines, ", "), i.ConnString, columnsTypeMissingLines[0], e.RootDir)
+`, len(columnsTypeMissingLines), strings.Join(columnsTypeMissingLines, ", "), "<connection-string>", columnsTypeMissingLines[0], e.RootDir)
 }
 
 var generateSchemaTmpl = template.Must(

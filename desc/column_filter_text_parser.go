@@ -2,7 +2,7 @@ package desc
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -51,38 +51,49 @@ type columnFilterExpression struct {
 
 // sortColumnFilterExpressions sorts the given ColumnFilterExpressions by static to more dynamic.
 func sortColumnFilterExpressions(expressions []*columnFilterExpression) {
-	sort.SliceStable(expressions, func(i, j int) bool {
-		c1 := expressions[i]
-		c2 := expressions[j]
-
-		if c1.tableName != wildcardLiteral && c1.columnName != wildcardLiteral && c1.columnDataType != InvalidDataType && len(c1.containsColumnNames) > 0 {
-			return true
+	slices.SortStableFunc(expressions, func(c1, c2 *columnFilterExpression) int {
+		switch {
+		case columnFilterExpressionLess(c1, c2):
+			return -1
+		case columnFilterExpressionLess(c2, c1):
+			return 1
+		default:
+			return 0
 		}
-
-		if c1.tableName == wildcardLiteral && c2.tableName == wildcardLiteral && c1.columnName != wildcardLiteral && c2.columnName != wildcardLiteral {
-			// checks like target_date pointer and target_date not pointer field types.
-			return len(c1.containsColumnNames) > len(c2.containsColumnNames)
-		}
-
-		if c1.tableName != wildcardLiteral && c1.columnName != wildcardLiteral && c1.columnDataType != InvalidDataType {
-			return true
-		}
-
-		if c1.tableName != wildcardLiteral && c1.columnName != wildcardLiteral &&
-			c2.tableName == wildcardLiteral || c2.columnName == wildcardLiteral {
-			return true
-		}
-
-		if c1.tableName != wildcardLiteral && c2.tableName == wildcardLiteral {
-			return true
-		}
-
-		if c1.columnName != wildcardLiteral && c2.columnName == wildcardLiteral {
-			return true
-		}
-
-		return false
 	})
+}
+
+// columnFilterExpressionLess implements sortColumnFilterExpressions' "static to more dynamic"
+// ordering: it reports whether c1 should sort before c2, under exactly the rules the former
+// sort.SliceStable Less function used.
+func columnFilterExpressionLess(c1, c2 *columnFilterExpression) bool {
+	if c1.tableName != wildcardLiteral && c1.columnName != wildcardLiteral && c1.columnDataType != InvalidDataType && len(c1.containsColumnNames) > 0 {
+		return true
+	}
+
+	if c1.tableName == wildcardLiteral && c2.tableName == wildcardLiteral && c1.columnName != wildcardLiteral && c2.columnName != wildcardLiteral {
+		// checks like target_date pointer and target_date not pointer field types.
+		return len(c1.containsColumnNames) > len(c2.containsColumnNames)
+	}
+
+	if c1.tableName != wildcardLiteral && c1.columnName != wildcardLiteral && c1.columnDataType != InvalidDataType {
+		return true
+	}
+
+	if c1.tableName != wildcardLiteral && c1.columnName != wildcardLiteral &&
+		c2.tableName == wildcardLiteral || c2.columnName == wildcardLiteral {
+		return true
+	}
+
+	if c1.tableName != wildcardLiteral && c2.tableName == wildcardLiteral {
+		return true
+	}
+
+	if c1.columnName != wildcardLiteral && c2.columnName == wildcardLiteral {
+		return true
+	}
+
+	return false
 }
 
 // String returns the filter's raw input.
@@ -142,11 +153,8 @@ func (p *columnFilterExpression) BuildColumnFilter(otherColumnNamesInsideTheTabl
 		if len(p.containsColumnNames) > 0 {
 			foundCount := 0
 			for _, columnName := range p.containsColumnNames {
-				for _, v := range otherColumnNamesInsideTheTable {
-					if columnName == v {
-						foundCount++
-						break
-					}
+				if slices.Contains(otherColumnNamesInsideTheTable, columnName) {
+					foundCount++
 				}
 			}
 

@@ -1,6 +1,10 @@
 package desc
 
-import "testing"
+import (
+	"reflect"
+	"strings"
+	"testing"
+)
 
 func TestColumnFieldTagString(t *testing.T) {
 	c := &Column{
@@ -30,5 +34,73 @@ func TestColumnFieldTagString(t *testing.T) {
 	expected := `pg:"name=test,type=varchar(255),primary,identity,default=test_default,unique,conflict=test_conflict,username,password,ref=test_reference_table_name(test_reference_column_name test_reference_on_delete deferrable),index=hash,unique_index=test_unique_index,check=test_check_constraint,auto,presenter,unscannable"`
 	if got := c.FieldTagString(true); expected != got {
 		t.Fatalf("expected field tag:\n%s\nbut got:\n%s", expected, got)
+	}
+}
+
+// TestExpressionsFilterTableMalformedExpression verifies that Expressions.FilterTable still
+// panics on a malformed filter expression (it must: the exported TableFilter interface has no
+// error return) but that the panic value is now a descriptive, wrapped error naming the offending
+// expression, instead of the bare parser error. A recovering caller (pg.DB.ListTables via its
+// unexported safeFilterTable helper) turns this back into a normal error.
+func TestExpressionsFilterTableMalformedExpression(t *testing.T) {
+	td := &Table{
+		Name: "users",
+		Columns: []*Column{
+			{Name: "id", TableName: "users"},
+		},
+	}
+
+	badInput := "this is not a valid filter expression"
+	expressions := Expressions{NewExpression(badInput, reflect.TypeOf(0))}
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected FilterTable to panic on a malformed expression, it did not")
+		}
+
+		err, ok := r.(error)
+		if !ok {
+			t.Fatalf("expected the panic value to be an error, got: %#v", r)
+		}
+
+		if !strings.Contains(err.Error(), badInput) {
+			t.Errorf("expected the panic error to mention the offending expression %q, got: %v", badInput, err)
+		}
+	}()
+
+	expressions.FilterTable(td)
+}
+
+// TestExpressionsFilterTableNilResultFieldType exercises the comma-ok type assertion fix in
+// FilterTable's column-filter callback. A nil ResultFieldType (as produced by, e.g.,
+// pg.MapTypeFilter{"table.column": nil}) is stored as a genuinely nil `any` in
+// columnFilterExpression.Data. reflect.Type is itself an interface, so assigning a nil
+// reflect.Type value into an `any` field yields a plain nil interface, not a "typed nil". The
+// unchecked type assertion this used to be (`Data.(reflect.Type)` without comma-ok) panics on a
+// nil interface; verify it now just skips the FieldType override instead of panicking.
+func TestExpressionsFilterTableNilResultFieldType(t *testing.T) {
+	originalFieldType := reflect.TypeOf(int(0))
+	td := &Table{
+		Name: "users",
+		Columns: []*Column{
+			{Name: "id", TableName: "users", Type: Integer, FieldType: originalFieldType},
+		},
+	}
+
+	expressions := Expressions{NewExpression("users.id", nil)}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("FilterTable panicked: %v", r)
+		}
+	}()
+
+	if ok := expressions.FilterTable(td); !ok {
+		t.Fatal("expected FilterTable to return true")
+	}
+
+	if got := td.Columns[0].FieldType; got != originalFieldType {
+		t.Fatalf("expected FieldType to remain unchanged since the override data was nil, got: %v", got)
 	}
 }

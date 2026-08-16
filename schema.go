@@ -1,19 +1,31 @@
 package pg
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
-	"sort"
+	"slices"
+	"sync"
 
 	"github.com/kataras/pg/desc"
 )
 
 // Schema is a type that represents a schema for the database.
 type Schema struct {
+	// mu guards structCache, orderedTypes and tableNameCache against concurrent
+	// Register calls and concurrent reads (Get, GetByTableName, Tables, Last, etc).
+	mu sync.RWMutex
+
 	// structCache is a map from reflect.Type to Table
-	// that stores the table definitions for the registered structs
+	// that stores the table definitions for the registered structs.
+	// Access must be guarded by mu.
 	structCache  map[reflect.Type]*desc.Table
 	orderedTypes []reflect.Type
+	// tableNameCache is a map from table name to Table, kept in sync with
+	// structCache by Register so that GetByTableName can perform a direct
+	// lookup instead of a linear scan over structCache. Access must be
+	// guarded by mu.
+	tableNameCache map[string]*desc.Table
 
 	passwordHandler *desc.PasswordHandler // cache for tables.
 	// The name of the "updated_at" column. Defaults to "updated_at" but it can be modified,
@@ -36,6 +48,8 @@ func NewSchema() *Schema {
 	return &Schema{
 		// Make a map from reflect.Type to Table.
 		structCache: make(map[reflect.Type]*desc.Table),
+		// Make a map from table name to Table, kept in sync with structCache.
+		tableNameCache: make(map[string]*desc.Table),
 		// Set the default name for the "updated_at" column.
 		UpdatedAtColumnName: "updated_at",
 		// Set the default name for the trigger that sets the "updated_at" column.
@@ -115,6 +129,12 @@ func (s *Schema) MustRegister(tableName string, emptyStructValue any, opts ...Ta
 
 // Register registers a database model (a struct value) mapped to a specific database table name.
 // Returns the generated Table definition.
+//
+// Register is safe for concurrent use by multiple goroutines, including
+// concurrently with the Schema's read methods (Get, GetByTableName, Tables,
+// TableNames, Last, HasColumnType, HasPassword). Note that any TableFilterFunc
+// passed as opts runs while Register holds its internal write lock, so an opt
+// must not call back into the same Schema or it will deadlock.
 func (s *Schema) Register(tableName string, emptyStructValue any, opts ...TableFilterFunc) (*desc.Table, error) {
 	typ := desc.IndirectType(reflect.TypeOf(emptyStructValue)) // get the underlying type of the struct value
 
@@ -122,6 +142,9 @@ func (s *Schema) Register(tableName string, emptyStructValue any, opts ...TableF
 	if err != nil {                                      // if there is an error
 		return nil, err // return the error
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	td.RegisteredPosition = len(s.structCache) + 1 // assign the registered position as the current size of the cache plus one
 	td.PasswordHandler = s.passwordHandler
@@ -134,12 +157,16 @@ func (s *Schema) Register(tableName string, emptyStructValue any, opts ...TableF
 
 	s.structCache[typ] = td // store the table definition in the cache with the type as the key
 	s.orderedTypes = append(s.orderedTypes, typ)
+	s.tableNameCache[td.Name] = td // keep the by-table-name lookup cache in sync
 
 	return td, nil // return the table definition and no error
 }
 
 // Last returns the last registered table definition.
 func (s *Schema) Last() *desc.Table {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	if len(s.orderedTypes) == 0 {
 		return nil
 	}
@@ -153,8 +180,11 @@ func (s *Schema) Last() *desc.Table {
 func (s *Schema) Get(typ reflect.Type) (*desc.Table, error) { // NOTE: to make it even faster we could set and then retrieve a Definition variable for each table struct type by interface check.
 	typ = desc.IndirectType(typ) // get the underlying type of the struct value.
 
+	s.mu.RLock()
 	td, ok := s.structCache[typ] // get the table definition from the cache
-	if !ok {                     // if not found
+	s.mu.RUnlock()
+
+	if !ok { // if not found
 		return nil, fmt.Errorf("%s was not registered, forgot Schema.Register?", typ.String()) // return an error
 	}
 
@@ -164,19 +194,27 @@ func (s *Schema) Get(typ reflect.Type) (*desc.Table, error) { // NOTE: to make i
 // GetByTableName takes a table name as a string
 // and returns a pointer to a Table that represents the table definition for the database
 // or an error if the table name is not registered in the schema.
+//
+// It performs a direct map lookup against a cache kept in sync by Register,
+// instead of a linear scan over every registered table.
 func (s *Schema) GetByTableName(tableName string) (*desc.Table, error) {
-	for _, td := range s.structCache { // loop over all the table definitions in the cache
-		if td.Name == tableName { // if the table name matches
-			return td, nil // return the table definition and no error
-		}
+	s.mu.RLock()
+	td, ok := s.tableNameCache[tableName] // direct lookup instead of a linear scan
+	s.mu.RUnlock()
+
+	if !ok { // if not found
+		return nil, fmt.Errorf("table %s was not registered, forgot Schema.Register?", tableName) // return an error if no match found
 	}
 
-	return nil, fmt.Errorf("table %s was not registered, forgot Schema.Register?", tableName) // return an error if no match found
+	return td, nil // return the table definition and no error
 }
 
 // Tables returns a slice of pointers to Table that represents all the table definitions in the schema
 // sorted by their registered position.
 func (s *Schema) Tables(types ...desc.TableType) []*desc.Table {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	// make a slice of pointers to Table with the same capacity as the number of entries in the cache
 	list := make([]*desc.Table, 0, len(s.structCache))
 
@@ -188,8 +226,8 @@ func (s *Schema) Tables(types ...desc.TableType) []*desc.Table {
 		list = append(list, td) // append each table definition to the slice
 	}
 
-	sort.Slice(list, func(i, j int) bool { // sort the slice by their registered position
-		return list[i].RegisteredPosition < list[j].RegisteredPosition
+	slices.SortFunc(list, func(a, b *desc.Table) int { // sort the slice by their registered position
+		return cmp.Compare(a.RegisteredPosition, b.RegisteredPosition)
 	})
 
 	return list // return the sorted slice
@@ -197,10 +235,12 @@ func (s *Schema) Tables(types ...desc.TableType) []*desc.Table {
 
 // TableNames returns a slice of strings that represents all the table names in the schema.
 func (s *Schema) TableNames(types ...desc.TableType) []string {
-	// make a slice of strings with the same capacity as the number of entries in the cache
-	list := make([]string, 0, len(s.structCache))
+	tables := s.Tables(types...) // Tables already guards structCache with its own read lock.
 
-	for _, td := range s.Tables(types...) { // loop over all the table definitions in the schema (sorted by their registered position)
+	// make a slice of strings with the same capacity as the number of matched tables
+	list := make([]string, 0, len(tables))
+
+	for _, td := range tables { // loop over all the table definitions in the schema (sorted by their registered position)
 		list = append(list, td.Name) // append each table name to the slice
 	}
 

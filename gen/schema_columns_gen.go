@@ -35,7 +35,12 @@ import (
 // definition.Company.Name.String() // returns "name"
 // definition.Customer.Email.String() // returns "email"
 //
-// Useful for type-safe query builders.
+// Useful for type-safe column constants, consumed by the WHERE/OrderBy/pagination helpers
+// (pg.Where/pg.Conditions, Repository.OrderBy, pg.PageOptions) instead of hand-typed column
+// name strings, e.g.:
+//
+//	where := pg.Where(definition.Customer.Email.String()+" = $1", email)
+//	orderBy, err := repo.OrderBy(definition.Customer.CreatedAt.String(), true)
 func GenerateColumnsFromSchema(s *pg.Schema, e ExportOptions) error {
 	if err := e.apply(); err != nil {
 		return err
@@ -66,6 +71,10 @@ func GenerateColumnsFromSchema(s *pg.Schema, e ExportOptions) error {
 
 	// Create each file for each table definition.
 	for _, td := range tables {
+		if err := validateTableFileName(td.Name); err != nil {
+			return fmt.Errorf("table: %s: %w", td.Name, err)
+		}
+
 		data, err = generateTableDefininion(e.GetPackageName(td.Name), td)
 		if err != nil {
 			return fmt.Errorf("generate table: %s: %w", td.Name, err)
@@ -76,7 +85,9 @@ func GenerateColumnsFromSchema(s *pg.Schema, e ExportOptions) error {
 			continue
 		}
 
-		mkdir(filename)
+		if err = mkdir(filename); err != nil {
+			return fmt.Errorf("mkdir: %s: %w", filename, err)
+		}
 
 		err = os.WriteFile(filename, data, e.FileMode)
 		if err != nil {
@@ -154,7 +165,7 @@ func generateTableDefininion(packageName string, td *pg.Table) ([]byte, error) {
 
 func mkdir(path string) error {
 	dir := filepath.Dir(path)
-	return os.MkdirAll(dir, 0777)
+	return os.MkdirAll(dir, 0o755)
 }
 
 func getCallerPackageName() string {

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://code.claude.com/schemas/plugin.json",
+  "name": "pg",
+  "description": "Development guide for the pg PostgreSQL library for Go: struct-tag schemas, Repository[T] and *DB, WHERE and pagination builders, transactions, COPY, migrations, typed errors and testing.",
+  "author": {
+    "name": "Gerasimos (Makis) Maropoulos",
+    "url": "https://github.com/kataras"
+  },
+  "homepage": "https://github.com/kataras/pg",
+  "repository": "https://github.com/kataras/pg",
+  "license": "MIT",
+  "keywords": [
+    "go",
+    "postgresql",
+    "pg",
+    "database",
+    "pgx"
+  ],
+  "skills": "./skill"
+}

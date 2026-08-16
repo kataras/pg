@@ -1,6 +1,6 @@
 module example_password
 
-go 1.21
+go 1.26
 
 replace github.com/kataras/pg => ../../
 

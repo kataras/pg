@@ -17,6 +17,10 @@ type ConcurrentTx struct {
 	mu sync.Mutex
 }
 
+// Compile-time assertion that *ConcurrentTx still implements pgx.Tx in full,
+// i.e. that no method promoted from the embedded pgx.Tx is left unwrapped by mistake.
+var _ pgx.Tx = (*ConcurrentTx)(nil)
+
 // NewConcurrentTx is a wrapper around pgxpool.Pool.Begin that provides a mutex to synchronize
 // access to the underlying pgx.Tx.
 // It returns a TxSync that wraps the pgx.Tx.
@@ -66,7 +70,7 @@ func (ct *ConcurrentTx) Query(ctx context.Context, sql string, args ...any) (Row
 	return ct.Tx.Query(ctx, sql, args...)
 }
 
-// QueryRow is a wrapper around pgx.Tx.QueryRow that provides a mutex to synchronize
+// Exec is a wrapper around pgx.Tx.Exec that provides a mutex to synchronize
 // access to the underlying pgx.Tx.
 func (ct *ConcurrentTx) Exec(ctx context.Context, sql string, args ...any) (commandTag pgconn.CommandTag, err error) {
 	ct.mu.Lock()
@@ -105,4 +109,41 @@ func (ct *ConcurrentTx) Begin(ctx context.Context) (pgx.Tx, error) {
 	}
 
 	return &ConcurrentTx{Tx: tx}, nil
+}
+
+// CopyFrom is a wrapper around pgx.Tx.CopyFrom that provides a mutex to synchronize
+// access to the underlying pgx.Tx.
+func (ct *ConcurrentTx) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+
+	return ct.Tx.CopyFrom(ctx, tableName, columnNames, rowSrc)
+}
+
+// LargeObjects is a wrapper around pgx.Tx.LargeObjects that provides a mutex to synchronize
+// access to the underlying pgx.Tx for the duration of this call only.
+//
+// The returned pgx.LargeObjects value is NOT synchronized by ConcurrentTx: any large
+// object operations performed through it bypass this type's mutex entirely, so a
+// caller sharing a ConcurrentTx across goroutines must not use the returned value
+// concurrently without its own additional synchronization.
+func (ct *ConcurrentTx) LargeObjects() pgx.LargeObjects {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+
+	return ct.Tx.LargeObjects()
+}
+
+// Conn is a wrapper around pgx.Tx.Conn that provides a mutex to synchronize
+// access to the underlying pgx.Tx for the duration of this call only.
+//
+// The returned *pgx.Conn is NOT synchronized by ConcurrentTx: any operations performed
+// directly on it bypass this type's mutex entirely, so a caller sharing a ConcurrentTx
+// across goroutines must not use the returned value concurrently without its own
+// additional synchronization.
+func (ct *ConcurrentTx) Conn() *pgx.Conn {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+
+	return ct.Tx.Conn()
 }

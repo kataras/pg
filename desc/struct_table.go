@@ -1,6 +1,7 @@
 package desc
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -8,12 +9,35 @@ import (
 	"strings"
 )
 
+// identifierRegex matches a bare, unquoted PostgreSQL identifier: it must start with a letter or
+// underscore, followed by letters, digits, underscores or dollar signs only. It intentionally
+// rejects quotes, dots, whitespace, non-ASCII characters and any other byte that could let a
+// tag-derived or name-mapper-derived name (table, column or unique index) break out of the quoted
+// identifier position it is written into by the query builders.
+var identifierRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_$]*$`)
+
+// validateIdentifier reports a descriptive error if name is not a safe, bare SQL identifier (see
+// identifierRegex); an empty name is rejected too, since it can never match the regex.
+// ConvertStructToTable calls it for every table name, column name and unique index name it
+// resolves, so that no unsafe identifier ever reaches the SQL query builders.
+func validateIdentifier(name string) error {
+	if !identifierRegex.MatchString(name) {
+		return fmt.Errorf("desc: invalid identifier: %q: must match %s", name, identifierRegex.String())
+	}
+
+	return nil
+}
+
 // ConvertStructToTable takes a table name and a reflect.Type that represents a struct type
 // and returns a pointer to a Table that represents a table definition for the database
 // or an error if the conversion fails.
 func ConvertStructToTable(tableName string, typ reflect.Type) (*Table, error) {
 	if kind := typ.Kind(); kind != reflect.Struct { // check if the type is a struct
 		return nil, fmt.Errorf("invalid type: expected a struct value but got: %s", kind.String()) // if not, return an error
+	}
+
+	if err := validateIdentifier(tableName); err != nil {
+		return nil, fmt.Errorf("table name: %w", err)
 	}
 
 	definition := &Table{ // create a new Table with the following fields
@@ -30,6 +54,19 @@ func ConvertStructToTable(tableName string, typ reflect.Type) (*Table, error) {
 		column, err := convertStructFieldToColumnDefinion(tableName, field) // convert each field to a column definition
 		if err != nil {                                                     // if there is an error
 			return nil, err // return the error
+		}
+
+		// validate the final column name (after tag/name-mapper resolution) before it can ever
+		// reach a query builder.
+		if err := validateIdentifier(column.Name); err != nil {
+			return nil, fmt.Errorf("struct field: %s: column name: %w", field.Name, err)
+		}
+
+		// validate the unique index name too, if the field declared one.
+		if column.UniqueIndex != "" {
+			if err := validateIdentifier(column.UniqueIndex); err != nil {
+				return nil, fmt.Errorf("struct field: %s: unique index name: %w", field.Name, err)
+			}
 		}
 
 		// set the parent table reference.
@@ -71,7 +108,7 @@ func isForeignKeyOnDeleteActionValid(s string) bool {
 
 var (
 	refLineRegex           = regexp.MustCompile(`(?i)(\w+)\((\w+)\s*(no action|cascade|restrict|set null|set default)?\s*(\w*)?\)$`)
-	errInvalidReferenceTag = fmt.Errorf("invalid reference tag")
+	errInvalidReferenceTag = errors.New("invalid reference tag")
 )
 
 func parseReferenceTagValue(value string) (refTableName, refColumnName, onDeleteAction string, isDeferrable bool, err error) {
@@ -114,6 +151,15 @@ const characterVaryingCastText = "::character varying"
 // convertStructFieldToColumnDefinion takes a table name and a reflect.StructField that represents a struct field
 // and returns a pointer to a Column that represents a column definition for the database
 // or an error if the conversion fails.
+//
+// Security note on tag values: the "default", "check", "generated" and "conflict" tag options
+// (Column.Default, Column.CheckConstraint, Column.GeneratedExpression and Column.Conflict) are
+// trusted, developer-authored SQL expressions: they are written verbatim into generated DDL/DML
+// (a DEFAULT clause, a CHECK(...) constraint, a GENERATED ALWAYS AS (...) STORED expression and an
+// ON CONFLICT ... DO UPDATE clause, respectively) with no escaping. They must never be built from
+// end-user input. Identifiers, in contrast (the table name, every column name and every unique
+// index name), are validated by ConvertStructToTable against the safe bare-identifier charset
+// (see validateIdentifier) before any query builder can interpolate them.
 func convertStructFieldToColumnDefinion(tableName string, field reflect.StructField) (*Column, error) {
 	c := &Column{
 		TableName:  tableName,
@@ -121,7 +167,7 @@ func convertStructFieldToColumnDefinion(tableName string, field reflect.StructFi
 		Type:       goTypeToDataType(field.Type),
 		FieldIndex: field.Index,
 		FieldType:  field.Type,
-		isPtr:      field.Type.Kind() == reflect.Ptr,
+		isPtr:      field.Type.Kind() == reflect.Pointer,
 		FieldName:  field.Name,
 	}
 
@@ -160,10 +206,15 @@ func convertStructFieldToColumnDefinion(tableName string, field reflect.StructFi
 		case "type":
 			if leftParenIndex := strings.IndexByte(value, leftParenLiteral); leftParenIndex > 0 {
 				// contains type arguments, e.g. length of varchar.
-				rightParenIndex := strings.IndexByte(value, rightParenLiteral)
-				if rightParenIndex == -1 {
+				// Search for the right parenthesis starting at leftParenIndex (not from the start
+				// of value): a right parenthesis appearing before the left one, e.g.
+				// "varchar)x(255", must not be matched here, or the slice expression below would
+				// panic with a negative-length slice bounds error.
+				rightParenOffset := strings.IndexByte(value[leftParenIndex:], rightParenLiteral)
+				if rightParenOffset == -1 {
 					return c, fmt.Errorf("struct field: %s: option: %s: type: missing right parenthesis", field.Name, opt)
 				}
+				rightParenIndex := leftParenIndex + rightParenOffset
 
 				c.TypeArgument = value[leftParenIndex+1 : rightParenIndex]
 				value = strings.TrimSpace(value[0:leftParenIndex])

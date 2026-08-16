@@ -58,6 +58,28 @@ func (repo *Repository[T]) QueryBoolean(ctx context.Context, query string, args 
 	return repo.db.QueryBoolean(ctx, query, args...)
 }
 
+// Count executes a query that returns a single numeric value (typically a COUNT(*) or other
+// aggregate over the repository's table) and returns it as an int64. A query that yields no
+// rows counts as zero; see DB.Count.
+func (repo *Repository[T]) Count(ctx context.Context, query string, args ...any) (int64, error) {
+	return repo.db.Count(ctx, query, args...)
+}
+
+// OrderBy validates a user-supplied sort column against the repository's table descriptor
+// and returns a quoted `"column" ASC|DESC` fragment ready to splice into an ORDER BY clause
+// (e.g. a caller's own PageOptions.OrderBy field). Callers that alias the table in the query
+// may prefix the returned fragment with the alias themselves, e.g. `"f." + fragment`.
+//
+// It is a thin, repository-scoped wrapper over desc.Table.OrderBy: see that method's doc for
+// the full validation rules (case-insensitive match against the table's columns, or exact
+// membership in extraColumns for computed/aliased columns), the empty-column fallback chain
+// (created_at, then updated_at, then the primary key), and why this validate-then-quote
+// approach is required instead of a bind parameter (dynamic ORDER BY cannot be one; see
+// jackc/pgx#885).
+func (repo *Repository[T]) OrderBy(column string, descending bool, extraColumns ...string) (string, error) {
+	return repo.td.OrderBy(column, descending, extraColumns...)
+}
+
 // Query executes a query that returns multiple rows and returns them as a Rows instance and an error.
 func (repo *Repository[T]) Query(ctx context.Context, query string, args ...any) (Rows, error) {
 	return repo.db.Query(ctx, query, args...)
@@ -82,12 +104,15 @@ func (repo *Repository[T]) MutateSingle(ctx context.Context, query string, args 
 
 // InTransaction runs a function within a database transaction and commits or
 // rolls back depending on the error value returned by the function.
+// The given ctx governs the transaction's begin, commit and rollback calls, so an
+// already-canceled or expired ctx makes InTransaction return promptly without
+// running fn.
 func (repo *Repository[T]) InTransaction(ctx context.Context, fn func(*Repository[T]) error) error {
 	if repo.db.IsTransaction() {
 		return fn(repo)
 	}
 
-	return repo.db.InTransaction(context.Background(), func(db *DB) error {
+	return repo.db.InTransaction(ctx, func(db *DB) error {
 		txRepo := &Repository[T]{
 			db: db,
 			td: repo.td,
@@ -164,8 +189,8 @@ var ErrIsReadOnly = errors.New("repository is read-only")
 //
 // For a single value, it delegates to InsertSingle. For multiple values
 // it delegates to InsertMany, which issues one multi-row INSERT per
-// desc.DefaultInsertBatchSize rows rather than one round-trip per row —
-// the previous implementation compounded network latency and could turn
+// desc.DefaultInsertBatchSize rows rather than one round-trip per row.
+// The previous implementation compounded network latency and could turn
 // a few-thousand-row catalog sync into a multi-minute operation.
 func (repo *Repository[T]) Insert(ctx context.Context, values ...T) error {
 	if repo.IsReadOnly() {
@@ -199,7 +224,15 @@ func (repo *Repository[T]) InsertMany(ctx context.Context, values ...T) error {
 	}
 
 	return repo.InTransaction(ctx, func(repo *Repository[T]) error {
+		// PostgreSQL allows at most 65535 bind parameters per prepared statement. A wide table
+		// (many insertable columns) combined with DefaultInsertBatchSize rows could otherwise
+		// overflow that ceiling at runtime with no way for the caller to override it, so shrink
+		// the batch size to fit whenever the table is wide enough for that to matter.
 		batchSize := desc.DefaultInsertBatchSize
+		if n := repo.td.NumInsertableColumns(); n > 0 {
+			batchSize = min(batchSize, 65535/n)
+		}
+
 		for start := 0; start < len(values); start += batchSize {
 			end := min(start+batchSize, len(values))
 			batch := values[start:end]
@@ -232,7 +265,30 @@ func (repo *Repository[T]) InsertSingle(ctx context.Context, value T, idPtr any)
 	return repo.db.insertTableRecord(ctx, repo.td, desc.IndirectValue(value), idPtr, "", false) // delegate the insertion to repo.db.insertTableRecord and return its result
 }
 
-// DoNothing is a constant that can be used as the forceOnConflictExpr argument of Upsert/UpsertSingle to do nothing on conflict.
+// DoNothing is a constant that can be used as the forceOnConflictExpr argument of
+// Upsert/UpsertMany/UpsertSingle (and DB.Upsert/DB.UpsertSingle) to emit a real
+// "ON CONFLICT ... DO NOTHING" instead of the usual "ON CONFLICT ... DO UPDATE SET ...".
+// The target is derived the same way a normal Upsert call derives it (the struct's
+// unique/unique_index tags), or, if the struct declares none, DO NOTHING is emitted with no
+// target at all ("ON CONFLICT DO NOTHING", which applies to a conflict against any unique
+// constraint on the table). The match against forceOnConflictExpr is case-insensitive, but
+// this exact value ("DO NOTHING") is always recognized.
+//
+// The same action can be requested via a `conflict=DO NOTHING` struct tag (Column.Conflict)
+// instead of passing DoNothing explicitly, but only on an Upsert-family call (forceOnConflictExpr
+// == "", upsert == true); a plain InsertSingle/DB.InsertSingle call ignores the tag and lets a
+// duplicate raise the database's own unique-violation error, same as it always has.
+//
+// UpsertSingle/DB.UpsertSingle called with idPtr set (single-row only: UpsertMany/DB.Upsert's
+// multi-value form never scans a row back) and forceOnConflictExpr == DoNothing always carries
+// RETURNING <primary key>, even though a DO NOTHING action would not otherwise get one (a
+// skipped conflicting row would otherwise come back indistinguishable from a query error, so
+// plain DO NOTHING, e.g. via a `conflict=<raw SQL>` tag unrelated to DoNothing, still omits
+// it): a row inserted with no conflict populates idPtr as usual, and a skipped conflicting row
+// is reported as ErrNoRows instead of a stale/zero idPtr: the same contract
+// Repository.InsertSingleOnConflict already guarantees for OnConflict{DoNothing: true}, which
+// remains the richer alternative (partial SetColumns, SetWhere, a named Constraint target, or
+// bulk DO NOTHING via InsertOnConflict) when this simpler forceOnConflictExpr form isn't enough.
 const DoNothing = "DO NOTHING"
 
 // Upsert inserts or updates one or more values of type T into the database.
@@ -256,13 +312,14 @@ func (repo *Repository[T]) Upsert(ctx context.Context, forceOnConflictExpr strin
 }
 
 // UpsertMany bulk-upserts values via multi-row INSERT ... ON CONFLICT
-// DO UPDATE statements in batches of desc.DefaultInsertBatchSize.
-// forceOnConflictExpr behaves exactly as on UpsertSingle: empty uses
-// the struct's declared conflict target (unique_index tag), non-empty
-// names a specific unique index to target.
+// DO UPDATE (or, with forceOnConflictExpr set to DoNothing, DO NOTHING) statements in
+// batches of desc.DefaultInsertBatchSize. forceOnConflictExpr behaves exactly as on
+// UpsertSingle: empty uses the struct's declared conflict target (unique_index tag),
+// DoNothing forces a DO NOTHING action, and any other non-empty value names a specific
+// unique index to target for a DO UPDATE.
 //
 // The whole call runs in one transaction. Per-row DEFAULT semantics
-// match InsertMany — zero-valued fields on defaulted columns emit the
+// match InsertMany: zero-valued fields on defaulted columns emit the
 // DEFAULT keyword so DB defaults fire.
 func (repo *Repository[T]) UpsertMany(ctx context.Context, forceOnConflictExpr string, values ...T) error {
 	if repo.IsReadOnly() {
@@ -273,7 +330,15 @@ func (repo *Repository[T]) UpsertMany(ctx context.Context, forceOnConflictExpr s
 	}
 
 	return repo.InTransaction(ctx, func(repo *Repository[T]) error {
+		// PostgreSQL allows at most 65535 bind parameters per prepared statement. A wide table
+		// (many insertable columns) combined with DefaultInsertBatchSize rows could otherwise
+		// overflow that ceiling at runtime with no way for the caller to override it, so shrink
+		// the batch size to fit whenever the table is wide enough for that to matter.
 		batchSize := desc.DefaultInsertBatchSize
+		if n := repo.td.NumInsertableColumns(); n > 0 {
+			batchSize = min(batchSize, 65535/n)
+		}
+
 		for start := 0; start < len(values); start += batchSize {
 			end := min(start+batchSize, len(values))
 			batch := values[start:end]
@@ -402,9 +467,9 @@ func (repo *Repository[T]) Duplicate(ctx context.Context, id any, newIDPtr any) 
 // the subscribed postgres channel is named 'table_change_notifications'.
 // The callback function is called on a separate goroutine.
 //
-// The callback function can return ErrStop to stop the listener without actual error.
-// The callback function can return any other error to stop the listener and return the error.
-// The callback function can return nil to continue listening.
+// The callback function can return a non-nil error to stop the listener, which is then
+// reported by the listener's goroutine. Returning nil continues listening.
+// Call the returned Closer to stop the listener from the outside.
 func (repo *Repository[T]) ListenTable(ctx context.Context, callback func(TableNotification[T], error) error) (Closer, error) {
 	opts := &ListenTableOptions{
 		Tables: map[string][]TableChangeType{repo.td.Name: defaultChangesToWatch},

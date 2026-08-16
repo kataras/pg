@@ -5,23 +5,43 @@ import "reflect"
 // ColumnBasicInfo represents a basic column information, contains the table name, column name, ordinal position, column default value,
 // data type, data type argument, whether the column is nullable, whether the column is identity and whether the column is generated.
 type ColumnBasicInfo struct {
-	TableName            string
-	TableDescription     string
-	TableType            TableType
-	Name                 string
-	OrdinalPosition      int
-	Description          string
-	Default              string
-	DataType             DataType
-	DataTypeArgument     string
-	IsNullable           bool
-	IsIdentity           bool
-	IsGenerated          bool
+	// TableName is the name of the table this column belongs to.
+	TableName string
+	// TableDescription is the table's comment/description, as reported by the database.
+	TableDescription string
+	// TableType is the kind of table (base table, view, materialized view, ...) this
+	// column belongs to.
+	TableType TableType
+	// Name is the column's name.
+	Name string
+	// OrdinalPosition is the column's 1-based position within the table.
+	OrdinalPosition int
+	// Description is the column's comment/description, as reported by the database.
+	Description string
+	// Default is the column's default value or expression, as reported by the database.
+	Default string
+	// DataType is the column's parsed data type.
+	DataType DataType
+	// DataTypeArgument is an optional argument for DataType, e.g. "255" for a varchar(255).
+	DataTypeArgument string
+	// IsNullable reports whether the column accepts NULL values.
+	IsNullable bool
+	// IsIdentity reports whether the column is an identity column (GENERATED ALWAYS/BY
+	// DEFAULT AS IDENTITY).
+	IsIdentity bool
+	// IsGenerated reports whether the column is a stored generated column
+	// (GENERATED ALWAYS AS (...) STORED).
+	IsGenerated bool
+	// GenerationExpression is the generation expression for a generated column; it is
+	// only meaningful when IsGenerated is true.
 	GenerationExpression string
 }
 
 var _ ColumnBuilder = (*ColumnBasicInfo)(nil)
 
+// BuildColumn implements the ColumnBuilder interface: it copies c's fields onto column,
+// deriving column's FieldIndex, FieldName and, where resolvable, FieldType from c's
+// OrdinalPosition, Name and DataType respectively.
 func (c *ColumnBasicInfo) BuildColumn(column *Column) error {
 	column.TableName = c.TableName
 	column.TableDescription = c.TableDescription
@@ -45,7 +65,7 @@ func (c *ColumnBasicInfo) BuildColumn(column *Column) error {
 
 	if typ := c.DataType.GoType(); typ != nil {
 		column.FieldType = typ
-		column.isPtr = typ.Kind() == reflect.Ptr
+		column.isPtr = typ.Kind() == reflect.Pointer
 	}
 
 	return nil

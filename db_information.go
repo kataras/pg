@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
-	"sort"
+	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/kataras/pg/desc"
@@ -49,8 +50,31 @@ func (db *DB) CreateSchemaDumpSQL(ctx context.Context) (string, error) {
 	return b.String(), nil
 }
 
+// searchPathRegex matches a bare, unquoted PostgreSQL identifier: it must start with a letter or
+// underscore, followed by letters, digits, underscores or dollar signs only. It intentionally
+// rejects quotes, dots, whitespace and any other character that could let a caller-supplied
+// search path break out of the unquoted SQL statement validateSearchPath guards.
+var searchPathRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_$]*$`)
+
+// validateSearchPath reports an error if searchPath is not a safe, bare SQL identifier
+// (see searchPathRegex). It exists because db.searchPath is interpolated, unquoted, into
+// "CREATE SCHEMA IF NOT EXISTS <search path>;". It is left unquoted so that Postgres' normal
+// identifier case-folding applies for existing callers, which also means it cannot be defended
+// with QuoteIdentifier the way the other identifier sinks in this package are.
+func validateSearchPath(searchPath string) error {
+	if !searchPathRegex.MatchString(searchPath) {
+		return fmt.Errorf("invalid search path: %q", searchPath)
+	}
+
+	return nil
+}
+
 // createDatabaseSchema creates the database schema.
 func (db *DB) createDatabaseSchemaDump(_ context.Context, b *strings.Builder) error {
+	if err := validateSearchPath(db.searchPath); err != nil {
+		return fmt.Errorf("create database schema: %w", err)
+	}
+
 	query := `CREATE SCHEMA IF NOT EXISTS ` + db.searchPath + `;`
 	b.WriteString(query)
 	return nil
@@ -291,7 +315,7 @@ func tolerateUndeclaredUniqueMemberIndex(dbColumn, codeColumn *desc.Column) {
 
 // DeleteSchema drops the database schema.
 func (db *DB) DeleteSchema(ctx context.Context) error {
-	query := `DROP SCHEMA IF EXISTS "` + db.searchPath + `" CASCADE;`
+	query := `DROP SCHEMA IF EXISTS ` + QuoteIdentifier(db.searchPath) + ` CASCADE;`
 	_, err := db.Exec(ctx, query)
 	return err
 }
@@ -307,14 +331,14 @@ func (db *DB) IsAutoVacuumEnabled(ctx context.Context) (enabled bool, err error)
 
 // DisableAutoVacuum disables autovacuum for the whole database.
 func (db *DB) DisableAutoVacuum(ctx context.Context) error {
-	query := `ALTER DATABASE "` + db.ConnectionOptions.Database + `" SET autovacuum = off;`
+	query := `ALTER DATABASE ` + QuoteIdentifier(db.ConnectionOptions.Database) + ` SET autovacuum = off;`
 	_, err := db.Exec(ctx, query)
 	return err
 }
 
 // DisableTableAutoVacuum disables autovacuum for a specific table.
 func (db *DB) DisableTableAutoVacuum(ctx context.Context, tableName string) error {
-	query := `ALTER TABLE "` + tableName + `" SET (autovacuum_enabled = false);`
+	query := `ALTER TABLE ` + QuoteIdentifier(tableName) + ` SET (autovacuum_enabled = false);`
 	_, err := db.Exec(ctx, query)
 	return err
 }
@@ -353,6 +377,7 @@ func (db *DB) GetVersion(ctx context.Context) (string, error) {
 
 // SizeInfo is a struct which contains the size information (for individual table or the whole database).
 type SizeInfo struct {
+	// SizePretty is the human-readable (pg_size_pretty) form of Size, e.g. "128 kB".
 	SizePretty string `json:"size_pretty"`
 	// The on-disk size in bytes of one fork of that relation.
 	// A fork is a variant of the main data file that stores additional information,
@@ -360,6 +385,7 @@ type SizeInfo struct {
 	// By default, this is the size of the main data fork only.
 	Size float64 `json:"size"`
 
+	// SizeTotalPretty is the human-readable (pg_size_pretty) form of SizeTotal, e.g. "256 kB".
 	SizeTotalPretty string `json:"size_total_pretty"`
 	// The total on-disk space used for that table, including all associated indexes. This is equivalent to pg_table_size + pg_indexes_size.
 	SizeTotal float64 `json:"size_total"`
@@ -367,6 +393,7 @@ type SizeInfo struct {
 
 // TableSizeInfo is a struct which contains the table size information used as an output parameter of the `db.ListTableSizes` method.
 type TableSizeInfo struct {
+	// TableName is the name of the table this size information was measured for.
 	TableName string `json:"table_name"`
 	SizeInfo
 }
@@ -412,7 +439,7 @@ func (db *DB) GetSize(ctx context.Context) (t SizeInfo, err error) {
 // MapTypeFilter is a map of expressions inputs text to field type.
 // It's a TableFilter.
 //
-// Example on LsitTableOptions of the ListTables method:
+// Example on ListTablesOptions of the ListTables method:
 //
 //	Filter: pg.MapTypeFilter{
 //		"customer_profiles.fields.jsonb": entity.Fields{},
@@ -430,11 +457,35 @@ func (m MapTypeFilter) FilterTable(t *Table) bool {
 	return expressions.FilterTable(t)
 }
 
-// ListTableOptions are the options for listing tables.
+// ListTablesOptions are the options for listing tables.
 type ListTablesOptions struct {
+	// TableNames restricts ListTables to the given table names; when empty, every table
+	// in the search path is listed.
 	TableNames []string
 
 	Filter desc.TableFilter // Filter allows to customize the StructName and its Column field types.
+}
+
+// safeFilterTable calls f.FilterTable(t) and recovers from any panic raised while doing so,
+// turning it into a returned error instead of letting it propagate and crash the caller.
+//
+// This matters because desc.Expressions.FilterTable (the TableFilter implementation behind
+// pg.MapTypeFilter) panics on a malformed filter expression (it can't return an error without
+// breaking the exported desc.TableFilter interface). Filter expression strings and their result
+// types are supplied by the caller of ListTables (see MapTypeFilter), so a typo there should
+// produce an error, not crash the process at connect time.
+func safeFilterTable(f desc.TableFilter, t *desc.Table) (ok bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if e, isErr := r.(error); isErr {
+				err = fmt.Errorf("pg: table filter panicked for table %q: %w", t.Name, e)
+			} else {
+				err = fmt.Errorf("pg: table filter panicked for table %q: %v", t.Name, r)
+			}
+		}
+	}()
+
+	return f.FilterTable(t), nil
 }
 
 // ListTables returns a list of converted table definitions from the remote database schema.
@@ -481,7 +532,11 @@ func (db *DB) ListTables(ctx context.Context, opts ListTablesOptions) ([]*desc.T
 
 		filter := opts.Filter
 		if filter != nil {
-			if ok := filter.FilterTable(table); !ok {
+			ok, err := safeFilterTable(filter, table)
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
 				continue // skip this table.
 			}
 		}
@@ -490,21 +545,34 @@ func (db *DB) ListTables(ctx context.Context, opts ListTablesOptions) ([]*desc.T
 	}
 
 	// Sort so "parent" tables are going first to the list.
-	sort.SliceStable(tables, func(i, j int) bool {
-		tb1 := tables[i]
-		tb2 := tables[j]
-		if tb2.IsReadOnly() {
-			return true // tb1 comes first.
+	slices.SortStableFunc(tables, func(a, b *desc.Table) int {
+		switch {
+		case tablesLess(a, b):
+			return -1
+		case tablesLess(b, a):
+			return 1
+		default:
+			return 0
 		}
-
-		if tb1.IsReadOnly() {
-			return false
-		}
-
-		return !strings.Contains(tb1.Name, "_")
 	})
 
 	return tables, nil
+}
+
+// tablesLess reports whether tb1 should sort before tb2 in ListTables' final ordering:
+// non-read-only tables come before read-only ones (views, etc. sort last), and among
+// non-read-only tables, ones whose name has no underscore come before ones that do
+// ("parent" tables before likely junction tables).
+func tablesLess(tb1, tb2 *desc.Table) bool {
+	if tb2.IsReadOnly() {
+		return true // tb1 comes first.
+	}
+
+	if tb1.IsReadOnly() {
+		return false
+	}
+
+	return !strings.Contains(tb1.Name, "_")
 }
 
 // ListColumns returns a list of columns definitions for the given table names.
@@ -528,11 +596,18 @@ func (db *DB) ListColumns(ctx context.Context, tableNames ...string) ([]*desc.Co
 
 	for _, basicInfo := range basicInfos {
 		var column desc.Column
-		basicInfo.BuildColumn(&column)
+		if err := basicInfo.BuildColumn(&column); err != nil {
+			return nil, err
+		}
 
 		for _, constraint := range constraints {
 			if constraint.TableName == column.TableName && constraint.ColumnName == column.Name {
-				constraint.BuildColumn(&column)
+				if err := constraint.BuildColumn(&column); err != nil {
+					// e.g. a composite foreign key or multiline CHECK expression that
+					// desc.Constraint's regex-based parser couldn't understand. Surface it
+					// as an error instead of the nil-pointer panic BuildColumn used to hit.
+					return nil, err
+				}
 			}
 		}
 

@@ -11,14 +11,32 @@ import (
 
 // ExportOptions is the options for the GenerateColumnsFromSchema function.
 type ExportOptions struct {
-	RootDir  string
+	// RootDir is the directory generated files are written under. It defaults to "./"
+	// and is resolved to an absolute path by apply, since GetPackageName's default
+	// implementation derives the root package name from it.
+	RootDir string
+	// FileMode is the file mode used when writing generated Go source files.
+	// It defaults to 0o644 (owner read/write, group/other read-only) so that
+	// generated source is not left world-writable; set it explicitly to
+	// override that default.
 	FileMode fs.FileMode
 
-	ToSingular     func(string) string
-	GetFileName    func(rootDir, tableName string) string
+	// ToSingular converts a table name to its singular form, used by the default
+	// GetFileName and GetPackageName strategies. Defaults to desc.Singular.
+	ToSingular func(string) string
+	// GetFileName returns the Go source file path for a given table name (or, called
+	// with an empty tableName, the root/schema file). Defaults to one file per table
+	// under RootDir, named after ToSingular(tableName); see EachTableToItsOwnPackage
+	// and EachTableGroupToItsOwnPackage for alternative, ready-made strategies.
+	GetFileName func(rootDir, tableName string) string
+	// GetPackageName returns the Go package name a generated table's file belongs to,
+	// derived by default from the directory GetFileName places it in.
 	GetPackageName func(tableName string) string
 }
 
+// EachTableToItsOwnPackage is a GetFileName strategy that places every table's generated
+// file in its own package, named after the table's singular form: rootDir/customer/customer.go
+// for a "customers" table.
 func EachTableToItsOwnPackage(rootDir, tableName string) string {
 	if strings.HasSuffix(tableName, ".go") {
 		return filepath.Join(rootDir, tableName)
@@ -29,6 +47,11 @@ func EachTableToItsOwnPackage(rootDir, tableName string) string {
 	return filename
 }
 
+// EachTableGroupToItsOwnPackage returns a GetFileName strategy that groups related tables
+// into the same package: the first table seen with a given prefix (e.g. "customer")
+// establishes the group, and any later table whose singular name starts with
+// "<group>_" (e.g. "customer_address") is placed in that same group's package instead of
+// getting one of its own.
 func EachTableGroupToItsOwnPackage() func(rootDir, tableName string) string {
 	visitedTables := make(map[string]struct{}) // table group.
 
@@ -60,7 +83,7 @@ func (opts *ExportOptions) apply() error {
 	}
 
 	if opts.FileMode <= 0 {
-		opts.FileMode = 0777
+		opts.FileMode = 0o644
 	}
 
 	rootDir, err := filepath.Abs(opts.RootDir)

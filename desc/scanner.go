@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -24,10 +25,15 @@ func RowsToStruct[T any](td *Table, rows pgx.Rows) ([]T, error) {
 
 	slice := []T{} // create a slice to hold the result values
 
+	// Build the column lookup once, outside the row loop, instead of once per row: findScanTargets
+	// otherwise resolved every column of every row via a linear, case-insensitive scan over
+	// td.Columns (GetColumnByName), an O(len(fieldDescs) * len(td.Columns)) cost per row.
+	lookup := buildColumnLookup(td)
+
 	for rows.Next() { // loop over each row in the rows
 		// convert the row to a value of type T using the table definition
 		var value T
-		err := ConvertRowsToStruct(td, rows, &value)
+		err := convertRowsToStruct(td, rows, &value, lookup)
 		if err != nil {
 			return nil, err // return an error if converting the row failed
 		}
@@ -39,6 +45,51 @@ func RowsToStruct[T any](td *Table, rows pgx.Rows) ([]T, error) {
 	}
 
 	return slice, nil // return the slice and nil error
+}
+
+// RowsToStructWithTotal is RowsToStruct that additionally captures the named int64 window
+// column (typically "total_count", as produced by a `COUNT(*) OVER()` window function in the
+// SELECT list) from each row instead of routing it to the no-op scanner, so a caller can read
+// that total without T carrying an artificial field for it. The pattern this replaces smuggled
+// the total through a fake struct field tagged `presenter`.
+//
+// totalColumn is matched against each row's field descriptions case-insensitively, the same
+// rule buildColumnLookup/findScanTargets use to match every other column, so "total_count",
+// "Total_Count" and "TOTAL_COUNT" are all equivalent. Every column other than totalColumn
+// resolves exactly as RowsToStruct resolves it (same lookup, same scanners, same strict-mode
+// behavior for an unmapped column); RowsToStructWithTotal changes only how totalColumn itself is
+// routed. `COUNT(*) OVER()` yields the same value on every row of the result set, so the last
+// row scanned wins for the returned total; a query that doesn't uphold that guarantee (a
+// different value per row) gets an unspecified total back.
+//
+// Zero rows returns (empty, 0, nil): there is nothing to scan a total out of, following
+// RowsToStruct's own zero-row behavior (no error, an empty slice).
+func RowsToStructWithTotal[T any](td *Table, rows pgx.Rows, totalColumn string) ([]T, int64, error) {
+	defer rows.Close() // close the rows after the function returns
+
+	slice := []T{} // create a slice to hold the result values
+
+	// Build the column lookup once, outside the row loop, for the same reason RowsToStruct does
+	// (see buildColumnLookup's doc).
+	lookup := buildColumnLookup(td)
+	totalColumnLower := strings.ToLower(totalColumn)
+
+	var total int64
+	for rows.Next() { // loop over each row in the rows
+		var value T
+		rowTotal, err := convertRowsToStructWithTotal(td, rows, &value, lookup, totalColumnLower)
+		if err != nil {
+			return nil, 0, err // return an error if converting the row failed
+		}
+		total = rowTotal // last row wins; COUNT(*) OVER() makes every row's value equal.
+		slice = append(slice, value)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err // return an error if there was an error in iterating over the rows
+	}
+
+	return slice, total, nil
 }
 
 // RowToStruct takes a schema, a single row of data from a database query, and a generic type T
@@ -60,7 +111,10 @@ func RowToStruct[T any](td *Table, rows pgx.Rows) (value T, err error) {
 		return value, fmt.Errorf("%s: %w", td.GetHumanName(), pgx.ErrNoRows) // return an error if there was no row in the rows
 	}
 
-	err = ConvertRowsToStruct(td, rows, &value) // convert the row to a value of type T using the table definition
+	// convert the row to a value of type T using the table definition; build the column lookup
+	// once here too (rather than calling the exported ConvertRowsToStruct, which would rebuild
+	// it) so both the single-row and multi-row paths share the same resolution code.
+	err = convertRowsToStruct(td, rows, &value, buildColumnLookup(td))
 	if err != nil {
 		return value, err // return an error if converting the row failed
 	}
@@ -71,13 +125,42 @@ func RowToStruct[T any](td *Table, rows pgx.Rows) (value T, err error) {
 // ConvertRowsToStruct takes a table definition, a row of data from a database query, and a generic type T
 // and returns a value of type T with the fields populated from the row data.
 func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr any) error {
+	return convertRowsToStruct(td, rows, valuePtr, buildColumnLookup(td))
+}
+
+// buildColumnLookup builds a case-insensitive index of td's columns, keyed by
+// strings.ToLower(column name). It lets the per-row scan-target resolution in
+// convertRowsToStruct/findScanTargets look up a column by the row's field name in O(1),
+// instead of paying GetColumnByName's O(len(td.Columns)) linear, case-insensitive scan for
+// every column of every row.
+//
+// strings.ToLower is safe to use as the case-folding key here (in place of the
+// strings.EqualFold comparison GetColumnByName performs) because validateIdentifier
+// (desc/struct_table.go) guarantees every column name is a bare ASCII identifier
+// ([A-Za-z_][A-Za-z0-9_$]*): for that charset, ToLower and EqualFold always agree, so the map
+// lookup below finds exactly the column GetColumnByName would have returned. GetColumnByName
+// itself is unchanged and still used by every non-per-row caller.
+func buildColumnLookup(td *Table) map[string]*Column {
+	lookup := make(map[string]*Column, len(td.Columns))
+	for _, col := range td.Columns {
+		lookup[strings.ToLower(col.Name)] = col
+	}
+
+	return lookup
+}
+
+// convertRowsToStruct is the shared implementation behind the exported ConvertRowsToStruct and
+// the per-row paths in RowsToStruct/RowToStruct. lookup must be the result of
+// buildColumnLookup(td); RowsToStruct builds it once and reuses it across every row instead of
+// rebuilding it (and re-paying its cost) per row.
+func convertRowsToStruct(td *Table, rows pgx.Rows, valuePtr any, lookup map[string]*Column) error {
 	// declare a variable to hold the result
 	// var value T
 	// get the reflect value of the result variable
 	dstElemValue := reflect.ValueOf(valuePtr).Elem()
 
 	// find the scan targets for each column in the row
-	scanTargets, err := findScanTargets(dstElemValue, td, rows.FieldDescriptions())
+	scanTargets, err := findScanTargets(dstElemValue, td, lookup, rows.FieldDescriptions())
 	if err != nil {
 		return err // return an error if finding scan targets failed
 	}
@@ -92,7 +175,15 @@ func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr any) error {
 		}
 	}
 
-	if err = rows.Scan(scanTargets...); err != nil {
+	return scanRow(td, rows, scanTargets)
+}
+
+// scanRow calls rows.Scan(scanTargets...) and, on a pgx.ScanArgError, enriches the error with
+// the offending struct field/column names before returning it: the same enrichment
+// convertRowsToStruct always performed inline, now shared with convertRowsToStructWithTotal so
+// both scanning paths report the same diagnostic detail on a scan failure.
+func scanRow(td *Table, rows pgx.Rows, scanTargets []any) error {
+	if err := rows.Scan(scanTargets...); err != nil {
 		// Help developer to find what field was errored:
 		var scanArgErr pgx.ScanArgError
 		if errors.As(err, &scanArgErr) {
@@ -101,7 +192,7 @@ func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr any) error {
 			// the only one option is to use the col's OrdinalPosition (starting from 1, where scanArgErr.ColumnIndex starts from 0)
 			// but OrdinalPosition is set only when CheckSchema method was called previously.
 			if fieldDescs := rows.FieldDescriptions(); len(fieldDescs) > scanArgErr.ColumnIndex {
-				colName := rows.FieldDescriptions()[scanArgErr.ColumnIndex].Name
+				colName := fieldDescs[scanArgErr.ColumnIndex].Name
 				col := td.GetColumnByName(colName)
 				if col != nil {
 					destColumnName := col.Name
@@ -116,16 +207,54 @@ func ConvertRowsToStruct(td *Table, rows pgx.Rows, valuePtr any) error {
 		return err // return an error if scanning the row data failed
 	}
 
-	return nil // return the result value and nil error
+	return nil // return nil error on a successful scan
 }
 
-// findScanTargets takes a reflect value of a struct, a table definition, and a slice of field descriptions
-// and returns a slice of scan targets for each column in the row.
-func findScanTargets(dstElemValue reflect.Value, td *Table, fieldDescs []pgconn.FieldDescription) ([]any, error) {
+// convertRowsToStructWithTotal is convertRowsToStruct plus out-of-band capture of the
+// totalColumnLower field (already lower-cased by the caller, RowsToStructWithTotal) into the
+// returned int64. It shares findScanTargets/lookup/scanRow with convertRowsToStruct, but
+// intercepts totalColumn's scan target itself, routing it to a totalScanner instead of the
+// nil-scan-target/strict-mode handling convertRowsToStruct applies, so the total column is
+// captured even when td.Strict would otherwise reject a column with no matching struct field.
+func convertRowsToStructWithTotal(td *Table, rows pgx.Rows, valuePtr any, lookup map[string]*Column, totalColumnLower string) (int64, error) {
+	dstElemValue := reflect.ValueOf(valuePtr).Elem()
+
+	fieldDescs := rows.FieldDescriptions()
+	scanTargets, err := findScanTargets(dstElemValue, td, lookup, fieldDescs)
+	if err != nil {
+		return 0, err
+	}
+
+	var total int64
+	for i, fieldDesc := range fieldDescs {
+		if strings.ToLower(fieldDesc.Name) == totalColumnLower {
+			scanTargets[i] = &totalScanner{dst: &total}
+			continue
+		}
+
+		if scanTargets[i] == nil {
+			if td.Strict {
+				return 0, fmt.Errorf("struct doesn't have corresponding row field: %s (strict check)", fieldDesc.Name)
+			}
+			scanTargets[i] = &noOpScanner{}
+		}
+	}
+
+	if err = scanRow(td, rows, scanTargets); err != nil {
+		return 0, err
+	}
+
+	return total, nil
+}
+
+// findScanTargets takes a reflect value of a struct, a table definition, a column lookup built by
+// buildColumnLookup(td), and a slice of field descriptions, and returns a slice of scan targets
+// for each column in the row.
+func findScanTargets(dstElemValue reflect.Value, td *Table, lookup map[string]*Column, fieldDescs []pgconn.FieldDescription) ([]any, error) {
 	scanTargets := make([]any, len(fieldDescs)) // create a slice to hold the scan targets
 
 	for i, fieldDesc := range fieldDescs { // loop over each column in the row
-		col := td.GetColumnByName(fieldDesc.Name) // get the column definition by name
+		col := lookup[strings.ToLower(fieldDesc.Name)] // O(1) case-insensitive lookup, see buildColumnLookup.
 		if col == nil {
 			continue // skip this column if there is no definition for it
 		}
@@ -154,6 +283,7 @@ func findScanTargets(dstElemValue reflect.Value, td *Table, fieldDescs []pgconn.
 			col.Nullable &&
 			(col.Type == UUID || col.Type == Text || col.Type == CharacterVarying) { /* Allow receive null on uuid, text and varchar columns even if the field is not a string pointer. */
 			scanTargets[i] = &nullableScanner{
+				colName:  col.Name,
 				fieldPtr: dstElemValue.FieldByIndex(col.FieldIndex),
 			}
 
@@ -181,16 +311,68 @@ type noOpScanner struct{}
 
 func (t *noOpScanner) Scan(src any) error { return nil }
 
+// totalScanner scans a single window-function total (e.g. a `COUNT(*) OVER()` column) into dst,
+// backing RowsToStructWithTotal's totalColumn capture. PostgreSQL's count() returns bigint
+// (int64), which pgx hands back as int64 for a COUNT(*) OVER() column; int/int32 are accepted
+// too in case a caller casts the window column to a narrower integer type. A nil src (unexpected
+// for a COUNT column, which is never NULL) is treated as zero rather than erroring.
+type totalScanner struct {
+	dst *int64
+}
+
+// Scan completes the sql driver.Scanner interface.
+func (t *totalScanner) Scan(src any) error {
+	if src == nil {
+		*t.dst = 0
+		return nil
+	}
+
+	switch v := src.(type) {
+	case int64:
+		*t.dst = v
+	case int32:
+		*t.dst = int64(v)
+	case int:
+		*t.dst = int64(v)
+	default:
+		return fmt.Errorf("scan: total column: cannot scan value of type %T into int64", src)
+	}
+
+	return nil
+}
+
 type nullableScanner struct { // useful for UUIDs with null values.
+	colName  string
 	fieldPtr reflect.Value
 }
 
+// Scan completes the sql driver.Scanner interface.
+//
+// It never panics: if the field can't be set, or the driver value's type is neither assignable
+// nor convertible to the field's type (e.g. the driver unexpectedly returns something other than
+// a string/[]byte for a text/uuid/varchar column), it returns a descriptive error instead of
+// letting reflect.Value.Set panic mid-scan.
 func (t *nullableScanner) Scan(src any) error {
 	if src == nil { // <- IMPORTANT.
 		return nil
 	}
 
-	t.fieldPtr.Set(reflect.ValueOf(src))
+	if !t.fieldPtr.CanSet() {
+		return fmt.Errorf("scan: column %s: field is not settable", t.colName)
+	}
+
+	srcValue := reflect.ValueOf(src)
+	srcType := srcValue.Type()
+	fieldType := t.fieldPtr.Type()
+
+	switch {
+	case srcType.AssignableTo(fieldType):
+		t.fieldPtr.Set(srcValue)
+	case srcType.ConvertibleTo(fieldType):
+		t.fieldPtr.Set(srcValue.Convert(fieldType))
+	default:
+		return fmt.Errorf("scan: column %s: cannot scan value of type %s into field of type %s", t.colName, srcType, fieldType)
+	}
 
 	return nil
 }
@@ -213,6 +395,10 @@ func (t *passwordTextScanner) Scan(src any) error {
 
 		if !t.passwordTextFieldPtr.CanSet() {
 			return fmt.Errorf("%s: password: text field is not settable", t.tableName)
+		}
+
+		if t.passwordTextFieldPtr.Kind() != reflect.String {
+			return fmt.Errorf("%s: password: text field is not a string (kind: %s)", t.tableName, t.passwordTextFieldPtr.Kind())
 		}
 
 		if plainText == "" {
@@ -253,7 +439,7 @@ func (t *jsonScanner) Scan(src any) error {
 
 	// Determine the target for unmarshaling.
 	target := t.fieldPtr.Interface()
-	if t.fieldPtr.Kind() != reflect.Ptr && t.fieldPtr.CanAddr() {
+	if t.fieldPtr.Kind() != reflect.Pointer && t.fieldPtr.CanAddr() {
 		target = t.fieldPtr.Addr().Interface()
 	}
 

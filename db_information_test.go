@@ -29,6 +29,54 @@ func TestInformation_GetVersion(t *testing.T) {
 	}
 }
 
+// TestSafeFilterTable verifies safeFilterTable recovers from a panicking TableFilter (see
+// desc.Expressions.FilterTable, which panics on a malformed pg.MapTypeFilter expression) and
+// turns it into a returned error instead of letting it crash the caller, while a well-formed
+// filter still behaves exactly like calling FilterTable directly.
+func TestSafeFilterTable(t *testing.T) {
+	t.Run("malformed filter expression returns an error instead of panicking", func(t *testing.T) {
+		table := &desc.Table{
+			Name: "users",
+			Columns: []*desc.Column{
+				{Name: "id", TableName: "users"},
+			},
+		}
+
+		filter := MapTypeFilter{
+			"this is not a valid expression": 0,
+		}
+
+		ok, err := safeFilterTable(filter, table)
+		if err == nil {
+			t.Fatal("expected an error for a malformed filter expression, got nil")
+		}
+		if ok {
+			t.Fatal("expected ok=false alongside the error")
+		}
+	})
+
+	t.Run("valid filter still matches", func(t *testing.T) {
+		table := &desc.Table{
+			Name: "users",
+			Columns: []*desc.Column{
+				{Name: "id", TableName: "users", Type: desc.Integer},
+			},
+		}
+
+		filter := MapTypeFilter{
+			"users.id": 0,
+		}
+
+		ok, err := safeFilterTable(filter, table)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !ok {
+			t.Fatal("expected ok=true for a valid, well-formed filter")
+		}
+	})
+}
+
 func TestTolerateUndeclaredUniqueMemberIndex(t *testing.T) {
 	tests := []struct {
 		name          string

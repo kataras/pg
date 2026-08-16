@@ -3,6 +3,7 @@ package pg
 import (
 	"context"
 	"fmt"
+	"os"
 )
 
 func ExampleOpen() {
@@ -66,7 +67,17 @@ func createTestConnectionSchema() error {
 
 // getTestConnString returns a connection string for connecting to a test database.
 // It uses constants to define the host, port, user, password, schema, dbname, and sslmode parameters.
+//
+// The tests in the root package require a live PostgreSQL server to run against.
+// Set the PG_CONNSTRING environment variable to override the hardcoded default
+// below and point the tests at a different server (e.g. a remote one); when
+// PG_CONNSTRING is empty, the default is used as-is (CI's postgres service
+// depends on it).
 func getTestConnString() string {
+	if override := os.Getenv("PG_CONNSTRING"); override != "" {
+		return override
+	}
+
 	const (
 		host     = "localhost" // The host name or IP address of the database server.
 		port     = 5432        // The port number of the database server.

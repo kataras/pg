@@ -1,11 +1,8 @@
 package desc
 
 import (
-	"encoding/json"
 	"math/big"
-	"net"
 	"reflect"
-	"time"
 )
 
 // Zeroer is an interface that defines a method to check if a value is zero.
@@ -17,185 +14,79 @@ type Zeroer interface {
 	IsZero() bool // IsZero returns true if the value is zero
 }
 
-// isZero takes an interface value and returns true if it is nil or zero.
+// isZero reports whether v represents an absent/empty value for the purposes of INSERT
+// default handling: a zero v causes the column's DB-side default (e.g. DEFAULT,
+// gen_random_uuid(), clock_timestamp()) to fire instead of binding v as a parameter.
+//
+// isZero has two independent code paths, chosen by v's dynamic type:
+//
+//  1. v is a reflect.Value: the main per-field default-skip decision
+//     (desc/argument.go and desc/insert_query.go). These semantics are fixed and must
+//     never change: a pointer is zero iff nil, anything else is zero iff its
+//     reflect.Value.IsZero() is true. A non-nil empty slice is therefore NOT zero on
+//     this path.
+//  2. v is anything else: the UUID-primary-key skip and the full-update path. Trust
+//     order:
+//     a. math/big pointer and value types (*big.Int, *big.Rat, *big.Float, big.Int,
+//     big.Rat) are special-cased: reflect-level zero detection is wrong for them (a
+//     big.Int produced by Sub(x, x) keeps a non-nil internal slice, so its reflect
+//     zero value differs from its numeric zero), and none of them implement Zeroer.
+//     Sign() == 0 is the correct check for all of them.
+//     b. Pointers are unwrapped one level at a time. A nil pointer, at any depth, is
+//     zero. A non-nil pointer whose type implements Zeroer (via a pointer or a
+//     promoted value receiver) defers to that method instead of being dereferenced
+//     further, so a typed-nil pointer never reaches an IsZero call on a nil
+//     receiver, unlike the type switch this replaces.
+//     c. Once fully dereferenced, a value that implements Zeroer (this is how
+//     time.Time is covered, without needing to name it) defers to its IsZero method.
+//     d. A slice or map, nil or not, is zero iff its length is 0: the historical
+//     "empty is zero" rule for this path, deliberately different from path 1 above.
+//     e. Everything else falls back to reflect.Value.IsZero(), which is correct for
+//     arbitrary types (arrays such as a [16]byte UUID, named primitives, plain
+//     structs, ...) that an exhaustive type switch could only get right by naming
+//     them one by one.
 func isZero(v any) bool {
 	if v == nil {
-		// if the value is nil, return true
 		return true
 	}
 
-	switch t := v.(type) { // switch on the type of the value
-	case *time.Time:
-		return t == nil || t.IsZero()
-	case *string:
-		return t == nil || *t == ""
-	case *int:
-		return t == nil || *t == 0
-	case *int8:
-		return t == nil || *t == 0
-	case *int16:
-		return t == nil || *t == 0
-	case *int32:
-		return t == nil || *t == 0
-	case *int64:
-		return t == nil || *t == 0
-	case *uint:
-		return t == nil || *t == 0
-	case *uint8:
-		return t == nil || *t == 0
-	case *uint16:
-		return t == nil || *t == 0
-	case *uint32:
-		return t == nil || *t == 0
-	case *uint64:
-		return t == nil || *t == 0
-	case *float32:
-		return t == nil || *t == 0
-	case *float64:
-		return t == nil || *t == 0
-	case *bool:
-		return t == nil || !*t
-	case *[]string:
-		return t == nil || len(*t) == 0
-	case *[]int:
-		return t == nil || len(*t) == 0
-	case *[]int8:
-		return t == nil || len(*t) == 0
-	case *[]int16:
-		return t == nil || len(*t) == 0
-	case *[]int32:
-		return t == nil || len(*t) == 0
-	case *[]int64:
-		return t == nil || len(*t) == 0
-	case *[]uint:
-		return t == nil || len(*t) == 0
-	case *[]uint8:
-		return t == nil || len(*t) == 0
-	case *[]uint16:
-		return t == nil || len(*t) == 0
-	case *[]uint32:
-		return t == nil || len(*t) == 0
-	case *[]uint64:
-		return t == nil || len(*t) == 0
-	case *[]float32:
-		return t == nil || len(*t) == 0
-	case *[]float64:
-		return t == nil || len(*t) == 0
-	case *[]bool:
-		return t == nil || len(*t) == 0
-	case *[]any:
-		return t == nil || len(*t) == 0
-	case *map[string]string:
-		return t == nil || len(*t) == 0
-	case *map[string]int:
-		return t == nil || len(*t) == 0
-	case *map[string]any:
-		return t == nil || len(*t) == 0
-	case *map[int]int:
-		return t == nil || len(*t) == 0
-	case *map[int]any:
-		return t == nil || len(*t) == 0
-	case *map[any]any:
-		return t == nil || len(*t) == 0
-	case *map[any]int:
-		return t == nil || len(*t) == 0
-	case *map[any]string:
-		return t == nil || len(*t) == 0
-	case *map[any]float64:
-		return t == nil || len(*t) == 0
-	case *map[any]bool:
-		return t == nil || len(*t) == 0
-	case *map[any][]any:
-		return t == nil || len(*t) == 0
-	case *map[any][]int:
-		return t == nil || len(*t) == 0
-	case *map[any][]string:
-		return t == nil || len(*t) == 0
-	case *map[any]map[any]any:
-		return t == nil || len(*t) == 0
-	case *map[any]map[any]int:
-		return t == nil || len(*t) == 0
-	case *map[any]map[any]string:
-		return t == nil || len(*t) == 0
-	case *map[any]map[any]float64:
-		return t == nil || len(*t) == 0
-	case *map[any]map[any]bool:
-		return t == nil || len(*t) == 0
-	case *map[any]map[any][]any:
-		return t == nil || len(*t) == 0
-	case *map[any]map[any][]int:
-		return t == nil || len(*t) == 0
-	case reflect.Value:
-		if t.Kind() == reflect.Ptr {
+	switch t := v.(type) {
+	case reflect.Value: // path 1: byte-identical semantics
+		if t.Kind() == reflect.Pointer {
 			return t.IsNil()
 		}
-
 		return t.IsZero()
-	case Zeroer: // if the value implements the Zeroer interface
-		return t == nil || t.IsZero() // call the IsZero method on the value
-	case string: // if the value is a string
-		return t == "" // return true if the string is empty
-	case int: // if the value is an int
-		return t == 0 // return true if the int is zero
-	case int8: // if the value is an int8
-		return t == 0 // return true if the int8 is zero
-	case int16: // if the value is an int16
-		return t == 0 // return true if the int16 is zero
-	case int32: // if the value is an int32
-		return t == 0 // return true if the int32 is zero
-	case int64: // if the value is an int64
-		return t == 0 // return true if the int64 is zero
-	case uint: // if the value is a uint
-		return t == 0 // return true if the uint is zero
-	case uint8: // if the value is a uint8
-		return t == 0 // return true if the uint8 is zero
-	case uint16: // if the value is a uint16
-		return t == 0 // return true if the uint16 is zero
-	case uint32: // if the value is a uint32
-		return t == 0 // return true if the uint32 is zero
-	case uint64: // if the value is a uint64
-		return t == 0 // return true if the uint64 is zero
-	case float32: // if the value is a float32
-		return t == 0 // return true if the float32 is zero
-	case float64: // if the value is a float64
-		return t == 0 // return true if the float64 is zero
-	case bool: // if the value is a bool
-		return !t // return true if the bool is false (the opposite of its value)
-	case []int: // if the value is a slice of ints
-		return len(t) == 0 // return true if the slice has zero length
-	case []string: // if the value is a slice of strings
-		return len(t) == 0 // return true if the slice has zero length
-	case [][]int: // if the value is a slice of slices of ints
-		return len(t) == 0 // return true if the slice has zero length
-	case [][]string: // if the value is a slice of slices of strings
-		return len(t) == 0 // return true if the slice has zero length
-	case json.Number: // if the value is a json.Number (a string that represents a number in JSON)
-		return t.String() == "" // return true if the string representation of the number is empty
-	case net.IP: // if the value is a net.IP (a slice of bytes that represents an IP address)
-		return len(t) == 0 // return true if the slice has zero length
-	case map[string]any:
-		return len(t) == 0
-	case map[int]any:
-		return len(t) == 0
-	case map[string]string:
-		return len(t) == 0
-	case map[string]int:
-		return len(t) == 0
-	case map[int]int:
-		return len(t) == 0
-	case struct{}:
-		return true
+	// explicit big-number cases: reflect.IsZero is wrong for computed zeros
+	// (a big.Int produced by Sub(x,x) keeps a non-nil internal slice), and
+	// the big types implement no IsZero method.
 	case *big.Int:
-		return t == nil
-	case big.Int:
-		return isZero(t.Int64())
+		return t == nil || t.Sign() == 0
 	case *big.Rat:
-		return t == nil
-	case big.Rat:
-		return isZero(t.Num())
+		return t == nil || t.Sign() == 0
 	case *big.Float:
-		return t == nil
-	default: // for any other type of value
-		return false // return false (assume it's not zero)
+		return t == nil || t.Sign() == 0
+	case big.Int:
+		return t.Sign() == 0
+	case big.Rat:
+		return t.Sign() == 0
 	}
+
+	rv := reflect.ValueOf(v)
+	for rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return true // typed nil → zero
+		}
+		if z, ok := rv.Interface().(Zeroer); ok { // pointer-receiver IsZero, non-nil
+			return z.IsZero()
+		}
+		rv = rv.Elem() // *string("") counts as zero (preserved)
+	}
+	if z, ok := rv.Interface().(Zeroer); ok { // value-receiver IsZero (incl. time.Time)
+		return z.IsZero()
+	}
+	switch rv.Kind() {
+	case reflect.Slice, reflect.Map: // preserve len==0 → zero (nil or not)
+		return rv.Len() == 0
+	}
+	return rv.IsZero() // the actual fix: unknown types now correct
 }

@@ -3,9 +3,8 @@ package pg
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"sync/atomic"
-	"unsafe"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,13 +24,13 @@ type Listener struct {
 	conn *pgxpool.Conn
 
 	channel string
-	closed  uint32
+	closed  atomic.Bool
 }
 
 var _ Closer = (*Listener)(nil)
 
 // ErrEmptyPayload is returned when the notification payload is empty.
-var ErrEmptyPayload = fmt.Errorf("empty payload")
+var ErrEmptyPayload = errors.New("empty payload")
 
 // Accept waits for a notification and returns it.
 func (l *Listener) Accept(ctx context.Context) (*Notification, error) {
@@ -54,7 +53,11 @@ func (l *Listener) Accept(ctx context.Context) (*Notification, error) {
 	return nf, nil
 }
 
-// Close closes the listener connection.
+// Close closes the listener connection. It unsubscribes from the channel with an UNLISTEN
+// statement and releases the underlying pooled connection back to the pool.
+//
+// Close is safe to call multiple times (and concurrently): only the first call does any work,
+// subsequent calls are no-ops that return nil.
 func (l *Listener) Close(ctx context.Context) error {
 	if l == nil {
 		return nil
@@ -64,14 +67,19 @@ func (l *Listener) Close(ctx context.Context) error {
 		return nil
 	}
 
-	if atomic.CompareAndSwapUint32(&l.closed, 0, 1) {
-		defer l.conn.Release()
-
-		query := `SELECT UNLISTEN $1;`
-		_, err := l.conn.Exec(ctx, query, l.channel)
+	if l.closed.CompareAndSwap(false, true) {
+		query := "UNLISTEN " + QuoteIdentifier(l.channel)
+		_, err := l.conn.Exec(ctx, query)
 		if err != nil {
+			// The connection is still subscribed to the channel: closing it (instead of
+			// releasing it back to the pool) makes pgxpool destroy it rather than recycle
+			// it, so the next borrower does not silently keep receiving notifications.
+			l.conn.Conn().Close(ctx)
+			l.conn.Release()
 			return err
 		}
+
+		l.conn.Release()
 	}
 
 	return nil
@@ -99,16 +107,10 @@ func notifyNative[T string | []byte](ctx context.Context, db *DB, channel string
 func UnmarshalNotification[T any](n *Notification) (T, error) {
 	var payload T
 
-	b := stringToBytes(n.Payload)
-
-	err := json.Unmarshal(b, &payload)
+	err := json.Unmarshal([]byte(n.Payload), &payload)
 	if err != nil {
 		return payload, err
 	}
 
 	return payload, nil
-}
-
-func stringToBytes(s string) []byte {
-	return unsafe.Slice(unsafe.StringData(s), len(s))
 }

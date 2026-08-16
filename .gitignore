@@ -14,3 +14,9 @@ _testdata/**
 _examples/**/uploads/*
 _issues/**
 .DS_STORE
+
+
+.claude
+.plexon
+.superpowers
+CLAUDE.md

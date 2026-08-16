@@ -2,8 +2,9 @@ package desc
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // BuildCreateTableQuery creates a table in the database according to the given table definition.
@@ -17,8 +18,10 @@ func BuildCreateTableQuery(td *Table) string {
 	columns := td.ListColumnsWithoutPresenter()
 	// Loop over the columns and append their definitions to the query
 	for i, col := range columns {
-		// Add the column name and type
-		query.WriteString(strconv.Quote(col.Name) + " " + col.Type.String())
+		// Add the column name and type. pgx.Identifier.Sanitize double-quotes the name and
+		// doubles any embedded '"': the correct SQL identifier escaping, unlike strconv.Quote
+		// which produces Go string escaping (invalid inside a Postgres identifier).
+		query.WriteString(pgx.Identifier{col.Name}.Sanitize() + " " + col.Type.String())
 
 		// Add the type argument if any
 		if col.TypeArgument != "" {
@@ -79,7 +82,7 @@ func BuildCreateTableQuery(td *Table) string {
 	// Read more at: https://stackoverflow.com/questions/23542794/postgres-unique-constraint-vs-index
 	for idxName, colNames := range td.UniqueIndexes() {
 		for i := range colNames {
-			colNames[i] = strconv.Quote(colNames[i]) // quote column names.
+			colNames[i] = pgx.Identifier{colNames[i]}.Sanitize() // quote column names.
 		}
 		query.WriteString(fmt.Sprintf(", CONSTRAINT %s UNIQUE (%s)", idxName, strings.Join(colNames, ", ")))
 	}

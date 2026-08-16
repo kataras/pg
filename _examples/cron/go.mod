@@ -1,6 +1,6 @@
 module github.com/kataras/pg/_examples/cron
 
-go 1.24.5
+go 1.26
 
 replace github.com/kataras/pg => ../../
 

@@ -1,0 +1,22 @@
+# This file uses the golangci-lint v1.x config schema (linters.disable-all / issues.exclude-dirs),
+# matching the golangci-lint-action@v6 / golangci-lint v1.62.2 pin in
+# .github/workflows/ci.yml - intentionally, not current (action is at major v9, golangci-lint at
+# v2.12.2 as of this pin). Upgrading requires migrating this file to the v2 schema
+# (linters.enable, plus a separate `formatters` section) alongside the CI workflow change; see
+# the comment above the `lint` job in ci.yml for why that's a deliberate follow-up, not done here.
+run:
+  timeout: 5m
+
+# Default linter set (errcheck, gosimple, govet, ineffassign, staticcheck, unused) - no extra
+# linters enabled here.
+linters:
+  disable-all: false
+
+issues:
+  # _examples and _benchmarks are separate Go modules (their own go.mod, pinned to older
+  # dependency versions via `replace`) excluded from CI/dependabot elsewhere; keep golangci-lint
+  # from ever walking into them too, in case it is ever invoked from the repo root without
+  # module boundaries in effect.
+  exclude-dirs:
+    - _examples
+    - _benchmarks

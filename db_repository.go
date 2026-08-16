@@ -45,7 +45,8 @@ func (db *DB) selectTableRecordByID(ctx context.Context, td *desc.Table, destPtr
 		return fmt.Errorf("no primary key found in table definition: %s", td.Name) // return an error if the table definition does not have a primary key
 	}
 
-	query := fmt.Sprintf(`SELECT * FROM "%s"."%s" WHERE "%s" = $1 LIMIT 1;`, db.searchPath, td.Name, primaryCol.Name)
+	query := fmt.Sprintf(`SELECT * FROM %s.%s WHERE %s = $1 LIMIT 1;`,
+		QuoteIdentifier(db.searchPath), QuoteIdentifier(td.Name), QuoteIdentifier(primaryCol.Name))
 	return db.selectSingleTable(ctx, td, destPtr, query, id)
 }
 
@@ -68,9 +69,13 @@ func (db *DB) selectTableRecordByUsernameAndPassword(ctx context.Context, td *de
 		return fmt.Errorf("username or password columns not found") // return an error if either column is nil
 	}
 
-	// construct a SQL query to select the row by using placeholders for the arguments
-	query := fmt.Sprintf(`SELECT * FROM "%s"."%s" WHERE "%s" = $1 AND password = crypt($2, %s) LIMIT 1;`,
-		db.searchPath, td.Name, usernameCol.Name, passwordCol.Name)
+	// construct a SQL query to select the row by using placeholders for the arguments.
+	// The password column is compared against itself (crypt reuses the stored value's salt),
+	// so it must resolve to the actual, possibly renamed, password column (not the literal
+	// "password") on both sides of the AND.
+	quotedPasswordCol := QuoteIdentifier(passwordCol.Name)
+	query := fmt.Sprintf(`SELECT * FROM %s.%s WHERE %s = $1 AND %s = crypt($2, %s) LIMIT 1;`,
+		QuoteIdentifier(db.searchPath), QuoteIdentifier(td.Name), QuoteIdentifier(usernameCol.Name), quotedPasswordCol, quotedPasswordCol)
 
 	return db.selectSingleTable(ctx, td, destPtr, query, username, plainPassword)
 }
@@ -158,14 +163,14 @@ func (db *DB) Upsert(ctx context.Context, forceOnConflictExpr string, values ...
 	case 0:
 		return nil
 	case 1:
-		return db.UpsertSingle(ctx, values[0], nil, forceOnConflictExpr)
+		return db.UpsertSingle(ctx, forceOnConflictExpr, values[0], nil)
 	default:
 		// Use db.InTransaction to run a function within a database transaction and handle the commit or rollback
 		return db.InTransaction(ctx, func(db *DB) error {
 			// Loop over the values and insert each one using db.InsertSingle
 			for _, value := range values {
 				// Call db.InsertSingle with the value and nil as the options
-				err := db.UpsertSingle(ctx, value, nil, forceOnConflictExpr)
+				err := db.UpsertSingle(ctx, forceOnConflictExpr, value, nil)
 				if err != nil {
 					return err // return the error and roll back the transaction if db.InsertSingle fails
 				}
@@ -179,7 +184,14 @@ func (db *DB) Upsert(ctx context.Context, forceOnConflictExpr string, values ...
 
 // UpsertSingle inserts or updates a single value into the database by building and
 // executing an SQL query based on the value and the table definition.
-func (db *DB) UpsertSingle(ctx context.Context, value any, idPtr any, forceOnConflictExpr string) error {
+//
+// forceOnConflictExpr comes first, immediately after ctx, so that every method in the
+// Upsert family takes its conflict specification in the same position: Upsert,
+// UpsertMany and Repository.InsertOnConflict all must put it there, because their
+// values are variadic. Pass DoNothing to skip conflicting rows, the empty string to
+// use the target derived from the struct's own tags, or the name of a unique index or
+// conflicting column to force one.
+func (db *DB) UpsertSingle(ctx context.Context, forceOnConflictExpr string, value any, idPtr any) error {
 	structValue := desc.IndirectValue(value)     // get the reflect.Value of the value and dereference it if it is a pointer
 	td, err := db.schema.Get(structValue.Type()) // get the table definition from the schema based on the type of the value
 	if err != nil {
@@ -268,7 +280,8 @@ func (db *DB) deleteByID(ctx context.Context, td *desc.Table, id any) (bool, err
 		return false, fmt.Errorf("no primary key found in table definition: %s", td.Name)
 	}
 
-	query := fmt.Sprintf(`DELETE FROM "%s"."%s" WHERE "%s" = $1;`, db.searchPath, td.Name, primaryKey.Name)
+	query := fmt.Sprintf(`DELETE FROM %s.%s WHERE %s = $1;`,
+		QuoteIdentifier(db.searchPath), QuoteIdentifier(td.Name), QuoteIdentifier(primaryKey.Name))
 	tag, err := db.Exec(ctx, query, id)
 	if err != nil {
 		return false, err

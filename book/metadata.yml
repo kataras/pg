@@ -1,0 +1,23 @@
+title: "pg"
+subtitle: "The Guide to the pg PostgreSQL Library for Go"
+author: "Gerasimos Maropoulos"
+# Cover credit chips, one per line.
+credit:
+  - "Creator of pg"
+  - "Creator of the Iris Web Framework"
+  - "Founder of Hellenic Development"
+edition: "First Edition"
+website: "https://github.com/kataras/pg"
+company: "https://hellenic.dev"
+repository: "https://github.com/kataras/pg"
+license: "MIT License"
+description: |
+  A complete, hands-on guide to github.com/kataras/pg, a PostgreSQL library
+  for Go built on pgx/v5. It covers declaring a schema with `pg` struct
+  tags, connecting and configuring a pool, the generic Repository[T] for
+  CRUD, the Conditions/Where query builder, pagination, writing data with
+  upserts and conflict handling, bulk loading and streaming with COPY,
+  transactions and retry, LISTEN/NOTIFY, schema management and migrations,
+  introspection and code generation, and the security, observability and
+  testing practices a production deployment needs, every example verified
+  against the library source.

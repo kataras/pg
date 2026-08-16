@@ -1,0 +1,689 @@
+/*
+ * pg book print stylesheet — light, modern, airy.
+ * Design language: PostgreSQL elephant blue, restrained and editorial:
+ *   brand:      #336791 (links/headings)  #2b5a7d (hover)  #4f8fc0 (solid)
+ *   accent:     #7fb2dd (theme color)
+ *   text:       #26313c primary, #5b6b78 secondary
+ *   surfaces:   #ffffff page, #f5f7f8 soft, #e9f1f7 blue tint
+ *   type:       Inter (embedded, optional); ligature-free monospace for code
+ *
+ * Pagination is produced by Paged.js. Hard-earned rules for it:
+ *   - never use break-inside/break-after "avoid" on content that can grow
+ *     taller than a page (no-progress layout loop, aborts the book);
+ *   - never set overflow: hidden on breakable blocks;
+ *   - never rely on bare whitespace-only text nodes (the generator wraps
+ *     every code token in a span for this reason).
+ */
+
+:root {
+    --brand-1: #336791;
+    --brand-2: #2b5a7d;
+    --brand-3: #4f8fc0;
+    --accent: #7fb2dd;
+    --text-1: #26313c;
+    --text-2: #5b6b78;
+    --text-3: #8a97a3;
+    --bg: #ffffff;
+    --bg-soft: #f5f7f8;
+    --tint: #e9f1f7;
+    --tint-strong: #d3e4ef;
+    --panel: #f7fafc;
+    --divider: #e3e8ec;
+    --mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+
+    /* The one non-brand hue in the book: error and failure branches in
+       diagrams, nowhere else. */
+    --danger: #c53434;
+
+    /* Cover only. The interior is light; the cover is a dark field, so it
+       needs its own text and surface values. Amber is the warm end of the
+       ramp and pairs with elephant blue without competing with it. */
+    --amber: #f0a94e;
+    --cover-bg: #0a1520;
+    --cover-text-1: #ffffff;
+    --cover-text-2: #a8bccf;
+    --cover-link: #7fb2dd;
+}
+
+/* ---------- page masters ---------- */
+
+@page {
+    size: A4;
+    margin: 24mm 20mm 22mm 20mm;
+
+    @bottom-center {
+        content: counter(page);
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        color: var(--text-3);
+    }
+    @top-left {
+        content: "pg";
+        font-family: "Inter", sans-serif;
+        font-size: 8.5pt;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--brand-1);
+    }
+    @top-right {
+        content: string(chaptertitle);
+        font-family: "Inter", sans-serif;
+        font-size: 8pt;
+        letter-spacing: 0.02em;
+        color: var(--text-3);
+    }
+}
+
+@page cover {
+    margin: 0;
+    @bottom-center { content: none; }
+    @top-left { content: none; }
+    @top-right { content: none; }
+}
+
+@page frontmatter {
+    @top-right { content: none; }
+}
+
+/* ---------- base typography ---------- */
+
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: "Inter", "Segoe UI", sans-serif;
+    font-size: 10.6pt;
+    line-height: 1.72;
+    color: var(--text-1);
+    background: var(--bg);
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
+}
+
+p {
+    margin: 0 0 0.9em;
+    orphans: 3;
+    widows: 3;
+}
+
+a {
+    color: var(--brand-1);
+    text-decoration: none;
+}
+
+strong { font-weight: 650; }
+em { color: inherit; }
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--divider);
+    margin: 2em 0;
+}
+
+ul, ol { padding-left: 1.4em; margin: 0 0 1em; }
+li { margin: 0.3em 0; }
+li > p { margin-bottom: 0.4em; }
+li::marker { color: var(--brand-3); }
+
+blockquote {
+    margin: 1.2em 0;
+    padding: 0.85em 1.15em;
+    border-left: 3px solid var(--accent);
+    background: var(--panel);
+    border-radius: 10px;
+    color: var(--text-1);
+    font-size: 0.96em;
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ---------- headings ---------- */
+
+h2, h3, h4 {
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--text-1);
+}
+
+h2 {
+    font-size: 16pt;
+    letter-spacing: -0.01em;
+    margin: 2.1em 0 0.9em;
+}
+
+/* A short brand bar under every section heading instead of a full-width
+   rule: lighter on the eye, unmistakably "pg". */
+h2::after {
+    content: "";
+    display: block;
+    width: 11mm;
+    height: 1.2mm;
+    margin-top: 2.2mm;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--brand-3), var(--accent));
+}
+
+h3 {
+    font-size: 12.5pt;
+    margin: 1.6em 0 0.5em;
+    color: var(--brand-1);
+}
+
+h4 {
+    font-size: 10.8pt;
+    margin: 1.2em 0 0.4em;
+    color: var(--text-2);
+}
+
+/* ---------- code ---------- */
+
+code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    /* Never render `!=` as a single glyph in a book that teaches typing. */
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+}
+
+p code, li code, td code, h2 code, h3 code, blockquote code, dd code {
+    background: var(--tint);
+    border-radius: 5px;
+    padding: 0.1em 0.42em;
+    color: var(--brand-1);
+}
+
+figure.code {
+    margin: 1.1em 0 1.35em;
+    break-inside: auto;
+    border: 1px solid var(--tint-strong);
+    border-radius: 10px;
+    background: var(--panel);
+}
+
+figure.code figcaption {
+    float: right;
+    font-family: var(--mono);
+    font-size: 6.8pt;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--brand-1);
+    background: var(--tint);
+    border-radius: 999px;
+    padding: 0.18em 0.9em;
+    margin: 0.65em 0.8em 0 0;
+}
+
+figure.code pre {
+    margin: 0;
+    padding: 0.85em 1.1em 0.95em;
+    font-family: var(--mono);
+    font-size: 8.6pt;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    break-inside: auto;
+    background: transparent !important;
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+}
+
+/* ---------- diagrams ---------- */
+
+/* Chapter diagrams are hand-authored SVG files under assets/diagrams,
+   inlined into the document by the generator so their labels use the same
+   embedded Inter as the body text and stay vector at print resolution. The
+   root width/height attributes exist for GitHub, which renders the same
+   files as plain images; here the text column wins.
+
+   There is deliberately no break-inside here. Paged.js 0.4.3 treats an
+   inline <svg> as an ordinary container and will happily fragment one
+   mid-drawing, and it ignores break-inside entirely, so the property would
+   be pure decoration. Diagrams are kept whole by the onOverflow handler in
+   the page template, and the generator refuses any diagram taller than the
+   text block. */
+figure.diagram {
+    margin: 1.5em 0 1.7em;
+    padding: 0;
+}
+
+figure.diagram svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+figure.diagram figcaption {
+    margin: 0.7em 0 0;
+    font-size: 8.5pt;
+    line-height: 1.5;
+    color: var(--text-2);
+}
+
+/* ---------- tables ---------- */
+
+/* Horizontal rules only: grids read like the 90s. Tables may fragment
+   across pages (an unbreakable tall table would abort pagination). */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1.1em 0 1.35em;
+    font-size: 9.2pt;
+    line-height: 1.5;
+}
+
+th {
+    color: var(--brand-1);
+    font-weight: 650;
+    text-align: left;
+    border-bottom: 1.5pt solid var(--tint-strong);
+}
+
+th, td {
+    border: 0;
+    padding: 0.5em 0.9em 0.5em 0;
+    vertical-align: top;
+}
+
+td { border-bottom: 0.6pt solid var(--divider); }
+tr:last-child td { border-bottom: 0; }
+
+/* ---------- cover ---------- */
+
+/* One design, two geometries. Every dimension is a multiple of --u, one
+   percent of the cover width, so the A4 print page (1:1.414) and the
+   standalone 1600x2560 canvas (1:1.6) are the same layout at two scales;
+   the standalone canvas's extra height lands in the flex gaps rather than
+   in the type. No overflow: hidden anywhere — the outermost <svg> clips
+   its own art, and Paged.js stalls on clipped blocks. */
+.cover {
+    --u: calc(var(--cover-w) / 100);
+    --cover-w: 210mm;
+    --cover-h: 297mm;
+    page: cover;
+    break-after: page;
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--cover-h);
+    padding: calc(var(--u) * 10) calc(var(--u) * 10) calc(var(--u) * 8);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    color: var(--cover-text-1);
+    background-color: var(--cover-bg);
+    background-image:
+        radial-gradient(circle at 78% 8%,
+            rgba(79, 143, 192, 0.42), rgba(79, 143, 192, 0) 55%),
+        radial-gradient(circle at 4% 88%,
+            rgba(51, 103, 145, 0.30), rgba(51, 103, 145, 0) 52%),
+        linear-gradient(180deg, #0a1520 0%, #0a1520 58%, #060c14 100%);
+}
+
+/* The standalone canvas, screenshotted at deviceScaleFactor 2 -> 1600x2560. */
+.cover--png {
+    --cover-w: 800px;
+    --cover-h: 1280px;
+    width: var(--cover-w);
+}
+
+.cover::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: calc(var(--u) * 1.5);
+    background: linear-gradient(90deg,
+        var(--brand-1), var(--accent), var(--amber));
+}
+
+.cover-art {
+    position: absolute;
+    inset: 0;
+    opacity: 0.5;
+}
+
+.cover-art svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* The author plate. The field above it is cool blue; this deepens toward
+   the foot and warms at the left with a trace of the brand amber, so the
+   credit block sits on its own surface instead of floating in the dark. It
+   is a positioned sibling declared before the flex children, so those paint
+   over it without any z-index bookkeeping. */
+.cover-plate {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 36%;
+    background:
+        radial-gradient(ellipse at 14% 108%,
+            rgba(240, 169, 78, 0.16), rgba(240, 169, 78, 0) 58%),
+        linear-gradient(180deg,
+            rgba(10, 21, 32, 0) 0%,
+            rgba(9, 18, 30, 0.62) 36%,
+            rgba(5, 10, 18, 0.94) 100%);
+}
+
+.cover-masthead,
+.cover-hero,
+.cover-footer {
+    position: relative;
+}
+
+.cover-edition {
+    font-size: calc(var(--u) * 2.6);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 calc(var(--u) * 4);
+}
+
+/* Solid, deliberately. A gradient-filled title via background-clip: text
+   renders correctly on screen but Chrome's PrintToPDF ignores the text clip
+   and paints the gradient as a solid block over the whole line box. The
+   gradient gesture lives in the rule below and the hairline above, both of
+   which print. */
+.cover-title {
+    font-size: calc(var(--u) * 26);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 0.92;
+    margin: 0;
+    color: #ffffff;
+}
+
+.cover-rule {
+    width: calc(var(--u) * 14);
+    height: calc(var(--u) * 0.9);
+    border-radius: 999px;
+    margin: calc(var(--u) * 3.5) 0 calc(var(--u) * 4);
+    background: linear-gradient(90deg,
+        var(--brand-3), var(--accent), var(--amber));
+}
+
+.cover-subtitle {
+    font-size: calc(var(--u) * 4.4);
+    line-height: 1.45;
+    color: var(--cover-text-2);
+    max-width: calc(var(--u) * 62);
+    margin: 0;
+}
+
+/* Symmetric clearance, and flex-shrink off. Both matter and for different
+   reasons. The margins are the only clearance the hero gets once the column
+   is full, so an asymmetric pair is not "more room at the foot" — it is less
+   room at the head, where the subtitle is. And a shrinkable hero fails
+   silently: the box collapses, the SVG inside keeps its own height, and with
+   align-items: center it spills half the difference straight up into the
+   subtitle. Sized to fit instead, so nothing has to give. */
+.cover-hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    margin: calc(var(--u) * 5) 0;
+}
+
+/* The hero is inlined as SVG, not linked as an image, so it stays vector all
+   the way into the PDF. Two things follow from that and neither is optional.
+   No filter: Chrome rasterizes a filtered subtree when printing, which would
+   put the raster back. And the size lives here rather than on the <svg>,
+   because the mark carries only a viewBox — presentation attributes only, so
+   nothing inside it can be styled from this sheet.
+
+   The cap binds on both geometries, so it is the number that sets the hero's
+   size; the width is an upper bound the cap never lets it reach. It is in
+   cover-h units because it is the one part of the design that has to answer
+   to the page's height rather than its width — A4 is 1:1.414 against the
+   canvas's 1:1.6, and what the shorter page runs out of is height. 0.20 is
+   what the A4 column can seat without squeezing anything. */
+.cover-hero svg {
+    width: calc(var(--u) * 58);
+    max-height: calc(var(--cover-h) * 0.20);
+    height: auto;
+}
+
+/* The author card. Its own surface, a shade lighter than the field, with an
+   amber rail down the left edge picking up the mark's core and the edition
+   line. Name and domains on the top row, credit chips below a hairline:
+   a credit block rather than four stacked lines. */
+.cover-footer {
+    box-sizing: border-box;
+    border: 1px solid rgba(127, 178, 221, 0.22);
+    border-left: calc(var(--u) * 0.9) solid var(--amber);
+    border-radius: calc(var(--u) * 2);
+    padding: calc(var(--u) * 3.4) calc(var(--u) * 4);
+    background:
+        linear-gradient(180deg,
+            rgba(79, 143, 192, 0.17) 0%,
+            rgba(51, 103, 145, 0.10) 55%,
+            rgba(15, 28, 42, 0.20) 100%);
+}
+
+.cover-footer-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: calc(var(--u) * 4);
+    padding-bottom: calc(var(--u) * 2.8);
+    margin-bottom: calc(var(--u) * 2.8);
+    border-bottom: 1px solid rgba(127, 178, 221, 0.20);
+}
+
+.cover-byline {
+    font-size: calc(var(--u) * 2);
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #96aec7;
+    margin: 0 0 calc(var(--u) * 1.4);
+}
+
+.cover-author {
+    font-size: calc(var(--u) * 3.6);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--cover-text-1);
+    margin: 0;
+}
+
+/* One domain per brand, each in its own colour: pg blue, Hellenic amber. */
+.cover-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: right;
+}
+
+.cover-links li {
+    font-size: calc(var(--u) * 2.6);
+    font-weight: 600;
+    line-height: 1.5;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.cover-link-iris { color: var(--cover-link); }
+.cover-link-company { color: #d9ae62; }
+
+.cover-credit {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--u) * 1.5) calc(var(--u) * 3);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.cover-credit li {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--u) * 1.1);
+    font-size: calc(var(--u) * 2.3);
+    line-height: 1.25;
+    color: #c2cfde;
+    margin: 0;
+}
+
+/* The separator dot is drawn, not typed: the embedded Inter is a Latin
+   subset, so a bullet glyph would risk tofu in the PDF. */
+.cover-credit li::before {
+    content: "";
+    width: calc(var(--u) * 0.8);
+    height: calc(var(--u) * 0.8);
+    border-radius: 50%;
+    background: var(--amber);
+    flex: 0 0 auto;
+}
+
+/* ---------- colophon ---------- */
+
+.colophon {
+    page: frontmatter;
+    break-after: page;
+    padding-top: 34mm;
+    max-width: 132mm;
+}
+
+.colophon h2 { font-size: 18pt; }
+
+.colophon dl {
+    display: grid;
+    grid-template-columns: 28mm 1fr;
+    row-gap: 0.5em;
+    margin: 1.8em 0;
+    font-size: 9.8pt;
+}
+
+.colophon dt { color: var(--text-3); font-weight: 650; }
+.colophon dd { margin: 0; }
+
+.colophon-note {
+    margin-top: 2.2em;
+    padding: 0.9em 1.15em;
+    background: var(--panel);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    font-size: 9.8pt;
+    color: var(--text-2);
+}
+
+/* ---------- table of contents ---------- */
+
+.toc {
+    page: frontmatter;
+    break-before: page;
+    break-after: page;
+}
+
+.toc h2 {
+    font-size: 24pt;
+    margin-bottom: 1.1em;
+}
+
+.toc > ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.toc-chapter { margin: 0.85em 0; }
+
+.toc-chapter > a {
+    display: flex;
+    align-items: baseline;
+    font-weight: 650;
+    font-size: 11pt;
+    color: var(--text-1);
+}
+
+.toc-num {
+    color: var(--brand-3);
+    min-width: 8mm;
+    margin-right: 2mm;
+    font-weight: 700;
+}
+
+.toc-chapter > a .toc-title { flex: 1; }
+
+.toc-chapter > a::after {
+    content: target-counter(attr(href), page);
+    color: var(--text-3);
+    font-weight: 400;
+    margin-left: 3mm;
+}
+
+.toc-sections {
+    list-style: none;
+    padding-left: 10mm;
+    margin: 0.25em 0 0.6em;
+    font-size: 8.9pt;
+    line-height: 1.75;
+    column-count: 2;
+    column-gap: 9mm;
+}
+
+.toc-sections li { margin: 0; }
+
+.toc-sections a {
+    color: var(--text-2);
+    display: flex;
+}
+
+.toc-sections a::after {
+    content: target-counter(attr(href), page);
+    margin-left: auto;
+    padding-left: 2mm;
+    color: var(--text-3);
+}
+
+/* ---------- chapters ---------- */
+
+.chapter {
+    break-before: page;
+}
+
+.chapter-opener {
+    margin: 0 0 11mm;
+    padding: 14mm 0 7mm;
+    position: relative;
+}
+
+.chapter-opener::after {
+    content: "";
+    display: block;
+    height: 1.4mm;
+    margin-top: 7mm;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--brand-3), var(--accent) 45%,
+        var(--tint-strong) 100%);
+}
+
+.chapter-number {
+    display: inline-block;
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--brand-1);
+    background: var(--tint);
+    border-radius: 999px;
+    padding: 0.35em 1.2em;
+    margin-bottom: 4mm;
+}
+
+.chapter-opener h1 {
+    font-size: 27pt;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    margin: 0;
+    color: var(--text-1);
+    string-set: chaptertitle content(text);
+}
+
+/* images */
+img { max-width: 100%; }

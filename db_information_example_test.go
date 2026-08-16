@@ -314,7 +314,7 @@ func ExampleDB_ListConstraints() {
 
 	for i, got := range columns {
 		expected := expectedConstraints[i]
-		if !reflect.DeepEqual(expected, got) {
+		if !sameConstraint(expected, got) {
 
 			if expected.ForeignKey != nil && got.ForeignKey != nil {
 				if !reflect.DeepEqual(expected.ForeignKey, got.ForeignKey) {
@@ -344,4 +344,20 @@ func ExampleDB_ListConstraints() {
 
 	// Output:
 	// OK
+}
+
+// sameConstraint reports whether two constraints agree on the fields this example
+// asserts. It deliberately avoids reflect.DeepEqual over the whole struct: desc.Constraint
+// also carries unexported state (the raw pg_get_constraintdef() text kept for error
+// messages), which a literal declared in this package cannot set, so a whole-struct
+// comparison would fail for every constraint the database actually describes.
+func sameConstraint(expected, got *desc.Constraint) bool {
+	return expected.TableName == got.TableName &&
+		expected.ColumnName == got.ColumnName &&
+		expected.ConstraintName == got.ConstraintName &&
+		expected.ConstraintType == got.ConstraintType &&
+		expected.IndexType == got.IndexType &&
+		reflect.DeepEqual(expected.Unique, got.Unique) &&
+		reflect.DeepEqual(expected.Check, got.Check) &&
+		reflect.DeepEqual(expected.ForeignKey, got.ForeignKey)
 }

@@ -37,11 +37,11 @@ func TestIsZero(t *testing.T) {
 		{map[string]int{"a": 1, "b": 2}, false}, // non-empty map of strings to ints should not be zero
 		{struct{}{}, true},                      // empty struct should be zero
 		{struct{ x int }{1}, false},             // non-empty struct should not be zero
-		{big.NewInt(0), false},                  // big int pointer with value 0 should not be zero
+		{big.NewInt(0), true},                   // big int pointer with value 0 should be zero (checked via Sign(), not just nilness)
 		{big.NewInt(1), false},                  // big int pointer with value 1 should not be zero
-		{big.NewRat(0, 1), false},               // big rational pointer with value 0/1 should be zero
+		{big.NewRat(0, 1), true},                // big rational pointer with value 0/1 should be zero (checked via Sign(), not just nilness)
 		{big.NewRat(1, 2), false},               // big rational pointer with value 1/2 should not be zero
-		{big.NewFloat(0.0), false},              // big float pointer with value 0.0 should not be zero
+		{big.NewFloat(0.0), true},               // big float pointer with value 0.0 should be zero (checked via Sign(), not just nilness)
 		{big.NewFloat(1.0), false},              // big float pointer with value 1.0 should not be zero
 		{json.Number(""), true},                 // empty json.Number should be zero
 		{json.Number("123"), false},             // non-empty json.Number should not be zero
@@ -101,5 +101,114 @@ func TestIsZero(t *testing.T) {
 		if result != tc.output {   // compare the result with the expected output
 			t.Errorf("[%d] isZero(%v) = %v, want %v", i, tc.input, result, tc.output) // report an error if they don't match
 		}
+	}
+}
+
+// customEmail is a defined (named) string type, standing in for the kind of
+// domain type (e.g. a validated email or ID wrapper) application code
+// commonly uses instead of a bare string. The pre-rewrite type switch had no
+// case for named string types, so isZero(customEmail("")) always returned
+// false (never zero) via its `default: return false` branch, permanently
+// blocking DEFAULT emission for any column of such a type.
+type customEmail string
+
+// valueReceiverZeroer implements Zeroer with a value receiver.
+type valueReceiverZeroer struct{ n int }
+
+// IsZero reports whether valueReceiverZeroer.n is zero.
+func (v valueReceiverZeroer) IsZero() bool { return v.n == 0 }
+
+// pointerReceiverZeroer implements Zeroer with a pointer receiver and, on
+// purpose, does not guard itself against a nil receiver (no `if p == nil`
+// check): it exists to prove that isZero (not the method) is what keeps a
+// typed nil pointer of this type safe to check.
+type pointerReceiverZeroer struct{ n int }
+
+// IsZero reports whether pointerReceiverZeroer.n is zero. It panics if called
+// on a nil receiver; isZero must never let that happen.
+func (p *pointerReceiverZeroer) IsZero() bool { return p.n == 0 }
+
+// plainCoords is an ordinary struct with no Zeroer implementation. The
+// pre-rewrite type switch had no case for arbitrary structs (only the
+// literal empty `struct{}` type was special-cased), so its zero value fell
+// to `default: return false` and was always reported non-zero.
+type plainCoords struct {
+	X, Y int
+}
+
+// TestIsZeroTypeCoverage exercises the categories of value the pre-rewrite
+// ~90-case type switch mishandled: unrecognized array-backed, named, or
+// custom struct types fell to its `default: return false` and were
+// permanently reported non-zero, blocking DEFAULT/gen_random_uuid()
+// emission for columns of those types. It also covers the math/big and
+// typed-nil Zeroer edge cases the replacement algorithm now handles
+// explicitly, and a re-confirmation that the reflect.Value ("path 1")
+// branch is unchanged.
+func TestIsZeroTypeCoverage(t *testing.T) {
+	nonZeroStringPtr := "x"
+	nilPointerReceiverZeroer := (*pointerReceiverZeroer)(nil)
+
+	tests := []struct {
+		name  string
+		input any
+		want  bool
+	}{
+		// [16]byte-shaped UUID (array kind): the motivating "unknown type"
+		// case: previously always non-zero regardless of value.
+		{"array UUID zero", [16]byte{}, true},
+		{"array UUID non-zero", [16]byte{1}, false},
+
+		// Named string type: previously always non-zero.
+		{"named string type zero", customEmail(""), true},
+		{"named string type non-zero", customEmail("x"), false},
+
+		// Pointer to a primitive: nil-unwrap then generic zero check.
+		{"pointer to zero string", new(string), true},
+		{"pointer to non-zero string", &nonZeroStringPtr, false},
+
+		// Interface path slice/map: non-nil empty is zero (len == 0),
+		// deliberately different from the reflect.Value path below.
+		{"non-nil empty slice (interface path)", []int{}, true},
+		{"non-empty slice", []int{0}, false},
+		{"non-nil empty map (interface path)", map[string]int{}, true},
+
+		// reflect.Value ("path 1") semantics must stay byte-identical: a
+		// non-nil empty slice is NOT zero here (opposite of the interface
+		// path above), and a typed nil pointer is zero.
+		{"reflect.Value non-nil empty slice (path 1 preserved)", reflect.ValueOf([]int{}), false},
+		{"reflect.Value typed nil pointer", reflect.ValueOf((*int)(nil)), true},
+
+		// math/big: reflect-level zero detection is wrong for computed
+		// zeros (Sub(x, x) keeps a non-nil internal slice), so these are
+		// checked via Sign() instead.
+		{"computed big.Int zero (Sub(x,x))", big.NewInt(5).Sub(big.NewInt(5), big.NewInt(5)), true},
+		{"nil *big.Int", (*big.Int)(nil), true},
+		{"non-nil big.Float representing 0", big.NewFloat(0), true},
+
+		// time.Time implements Zeroer and is covered generically, without
+		// being named anywhere in isZero.
+		{"zero time.Time", time.Time{}, true},
+		{"non-zero time.Time", time.Now(), false},
+
+		// Zeroer dispatch, value and pointer receiver, including the
+		// panic-prone-under-the-old-code typed-nil-pointer case.
+		{"value-receiver Zeroer zero", valueReceiverZeroer{n: 0}, true},
+		{"value-receiver Zeroer non-zero", valueReceiverZeroer{n: 1}, false},
+		{"pointer-receiver Zeroer zero", &pointerReceiverZeroer{n: 0}, true},
+		{"pointer-receiver Zeroer non-zero", &pointerReceiverZeroer{n: 1}, false},
+		{"typed nil pointer-receiver Zeroer (must not panic)", nilPointerReceiverZeroer, true},
+
+		// Arbitrary struct with no Zeroer: previously always non-zero.
+		{"plain struct zero", plainCoords{}, true},
+		{"plain struct non-zero field", plainCoords{X: 1}, false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isZero(tc.input)
+			if got != tc.want {
+				t.Errorf("isZero(%#v) = %v, want %v", tc.input, got, tc.want)
+			}
+		})
 	}
 }

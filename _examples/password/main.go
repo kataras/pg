@@ -64,7 +64,9 @@ func main() {
 		opts := gen.ExportOptions{
 			RootDir: "./definition",
 		}
-		gen.GenerateColumnsFromSchema(schema, &opts)
+		if err := gen.GenerateColumnsFromSchema(schema, opts); err != nil {
+			panic(err)
+		}
 	}()
 	// Create Database instance.
 	/*
