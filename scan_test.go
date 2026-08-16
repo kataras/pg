@@ -60,8 +60,7 @@ func setupScanTestTables(t *testing.T, db *DB) {
 	}
 
 	t.Cleanup(func() {
-		db.Exec(context.Background(), fmt.Sprintf("DROP TABLE IF EXISTS %s", childTable))
-		db.Exec(context.Background(), fmt.Sprintf("DROP TABLE IF EXISTS %s", parentTable))
+		dropTestTables(context.Background(), db, childTable, parentTable)
 	})
 
 	if _, err := db.Exec(ctx, fmt.Sprintf(

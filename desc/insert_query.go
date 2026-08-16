@@ -378,22 +378,11 @@ func buildDoUpdateFromExcludedNames(names, conflicts []string) string {
 	return b.String()
 }
 
-// buildDoUpdateFromExcluded emits "DO UPDATE SET col = EXCLUDED.col, ..."
-// for every column not in the conflict set: the same form the single-row
-// builder uses for full upserts.
-func buildDoUpdateFromExcluded(cols []*Column, conflicts []string) string {
-	names := make([]string, len(cols))
-	for i, c := range cols {
-		names[i] = c.Name
-	}
-	return buildDoUpdateFromExcludedNames(names, conflicts)
-}
-
 // buildDoUpdateFromExcludedSubset emits "DO UPDATE SET <id> = EXCLUDED.<id>, ..." for exactly the
 // given identifiers (already quoted, or not, as the caller wants them to appear in the generated
 // SQL). This is the OnConflict.SetColumns partial-update case (on_conflict.go's resolveOnConflict),
 // and its empty-SetColumns fallback once the caller has already filtered the conflict target out of
-// the identifier list. Unlike buildDoUpdateFromExcluded/buildDoUpdateFromExcludedNames (which do
+// the identifier list. Unlike buildDoUpdateFromExcludedNames (which does
 // their own conflict-target filtering against a set of bare column names), this performs no
 // filtering: the caller decides exactly which identifiers appear, and in what form.
 func buildDoUpdateFromExcludedSubset(identifiers []string) string {

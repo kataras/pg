@@ -45,7 +45,7 @@ func TestUpsertSingleDoNothingReturning(t *testing.T) {
 	if err = setupConflictScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+conflictScratchTable)
+	defer dropTestTables(ctx, db, conflictScratchTable)
 
 	repo := NewRepository[conflictScratchItem](db)
 

@@ -31,7 +31,7 @@ func TestDBCount(t *testing.T) {
 	if _, err = db.Exec(ctx, fmt.Sprintf("CREATE TABLE %s (id SERIAL PRIMARY KEY, category TEXT)", table)); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", table))
+	defer dropTestTables(ctx, db, table)
 
 	t.Run("normal count", func(t *testing.T) {
 		if _, err = db.Exec(ctx, fmt.Sprintf("INSERT INTO %s (category) VALUES ('a'), ('a'), ('b')", table)); err != nil {
@@ -120,7 +120,7 @@ func TestQueryMap(t *testing.T) {
 	if _, err = db.Exec(ctx, fmt.Sprintf("CREATE TABLE %s (k TEXT, v INTEGER, ord SERIAL)", table)); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", table))
+	defer dropTestTables(ctx, db, table)
 
 	t.Run("round trip and duplicate key overwrite", func(t *testing.T) {
 		// "a" appears twice; the row with v=99 has the higher "ord" so it must be the one
@@ -184,7 +184,7 @@ func TestQueryFunc(t *testing.T) {
 	if _, err = db.Exec(ctx, fmt.Sprintf("CREATE TABLE %s (name TEXT)", table)); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", table))
+	defer dropTestTables(ctx, db, table)
 
 	if _, err = db.Exec(ctx, fmt.Sprintf(
 		"INSERT INTO %s (name) VALUES ('a'), ('a'), ('b')", table)); err != nil {

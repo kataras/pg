@@ -13,7 +13,7 @@ func BuildCreateTableQuery(td *Table) string {
 	var query strings.Builder
 
 	// Start with the CREATE TABLE statement and the table name
-	query.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", td.Name))
+	fmt.Fprintf(&query, "CREATE TABLE IF NOT EXISTS %s (", td.Name)
 
 	columns := td.ListColumnsWithoutPresenter()
 	// Loop over the columns and append their definitions to the query
@@ -25,12 +25,12 @@ func BuildCreateTableQuery(td *Table) string {
 
 		// Add the type argument if any
 		if col.TypeArgument != "" {
-			query.WriteString(fmt.Sprintf("(%s)", col.TypeArgument))
+			fmt.Fprintf(&query, "(%s)", col.TypeArgument)
 		}
 
 		if col.GeneratedExpression != "" {
 			// Stored generated column: GENERATED ALWAYS AS (expr) STORED
-			query.WriteString(fmt.Sprintf(" GENERATED ALWAYS AS (%s) STORED", col.GeneratedExpression))
+			fmt.Fprintf(&query, " GENERATED ALWAYS AS (%s) STORED", col.GeneratedExpression)
 		} else {
 			// Add the default value if any
 			if col.Default != "" {
@@ -48,7 +48,7 @@ func BuildCreateTableQuery(td *Table) string {
 
 		// Add the CHECK constraint if any
 		if col.CheckConstraint != "" {
-			query.WriteString(fmt.Sprintf(" CHECK (%s)", col.CheckConstraint))
+			fmt.Fprintf(&query, " CHECK (%s)", col.CheckConstraint)
 		}
 
 		// Add a comma separator if this is not the last column.
@@ -59,7 +59,7 @@ func BuildCreateTableQuery(td *Table) string {
 
 	// Add the primary key constraint if any. We only allow one Primary Key column.
 	if primaryKey, ok := td.PrimaryKey(); ok {
-		query.WriteString(fmt.Sprintf(`, PRIMARY KEY ("%s")`, primaryKey.Name))
+		fmt.Fprintf(&query, `, PRIMARY KEY ("%s")`, primaryKey.Name)
 	}
 
 	// Loop over the foreign key constraints and append them to the query
@@ -84,7 +84,7 @@ func BuildCreateTableQuery(td *Table) string {
 		for i := range colNames {
 			colNames[i] = pgx.Identifier{colNames[i]}.Sanitize() // quote column names.
 		}
-		query.WriteString(fmt.Sprintf(", CONSTRAINT %s UNIQUE (%s)", idxName, strings.Join(colNames, ", ")))
+		fmt.Fprintf(&query, ", CONSTRAINT %s UNIQUE (%s)", idxName, strings.Join(colNames, ", "))
 	}
 
 	// Close the CREATE TABLE statement with a semicolon
@@ -93,8 +93,8 @@ func BuildCreateTableQuery(td *Table) string {
 	// Loop over the non-unique indexes and append them to the query as separate statements
 	for _, idx := range td.Indexes() {
 		// Use the CREATE INDEX statement with the index name, table name, type and column name
-		query.WriteString(fmt.Sprintf(`CREATE INDEX IF NOT EXISTS %s ON %s USING %s ("%s");`,
-			idx.Name, td.Name, idx.Type.String(), idx.ColumnName))
+		fmt.Fprintf(&query, `CREATE INDEX IF NOT EXISTS %s ON %s USING %s ("%s");`,
+			idx.Name, td.Name, idx.Type.String(), idx.ColumnName)
 	}
 
 	return query.String()

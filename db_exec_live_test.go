@@ -32,7 +32,7 @@ func TestDBExecMany(t *testing.T) {
 		"CREATE TABLE %s (id BIGSERIAL PRIMARY KEY, name TEXT UNIQUE NOT NULL)", execManyScratchTable)); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+execManyScratchTable)
+	defer dropTestTables(ctx, db, execManyScratchTable)
 
 	t.Run("all statements commit together", func(t *testing.T) {
 		err := db.ExecMany(ctx,
@@ -105,8 +105,7 @@ func setupDeferredScratchTables(ctx context.Context, db *DB) error {
 }
 
 func dropDeferredScratchTables(ctx context.Context, db *DB) {
-	db.Exec(ctx, "DROP TABLE IF EXISTS "+deferredScratchChildTable)
-	db.Exec(ctx, "DROP TABLE IF EXISTS "+deferredScratchParentTable)
+	dropTestTables(ctx, db, deferredScratchChildTable, deferredScratchParentTable)
 }
 
 // TestDBSetConstraintsDeferred verifies: SetConstraintsDeferred errors outside of a

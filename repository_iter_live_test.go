@@ -111,7 +111,7 @@ func TestSelectIterRoundTrip(t *testing.T) {
 	if err := setupIterScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+iterScratchTable)
+	defer dropTestTables(ctx, db, iterScratchTable)
 
 	const n = 100
 	if err := seedIterScratchTable(ctx, db, n); err != nil {
@@ -163,7 +163,7 @@ func TestSelectIterEarlyBreakReleasesConnection(t *testing.T) {
 	if err := setupIterScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+iterScratchTable)
+	defer dropTestTables(ctx, db, iterScratchTable)
 
 	const n = 100
 	if err := seedIterScratchTable(ctx, db, n); err != nil {
@@ -248,7 +248,7 @@ func TestQueryIterIncludesEmptyStrings(t *testing.T) {
 	if err := setupIterScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+iterScratchTable)
+	defer dropTestTables(ctx, db, iterScratchTable)
 
 	const n = 10 // tag: "" for even i (5 rows), "tag-<i>" for odd i (5 rows).
 	if err := seedIterScratchTable(ctx, db, n); err != nil {

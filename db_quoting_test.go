@@ -63,8 +63,8 @@ func TestSelectByUsernameAndPasswordCustomColumn(t *testing.T) {
 	// Best-effort cleanup from a previous failed run, then guaranteed cleanup of this run: this
 	// scratch table is private to this test, so dropping it (rather than the shared schema) is
 	// both sufficient and safe.
-	_, _ = db.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
+	dropTestTables(ctx, db, tableName)
+	defer dropTestTables(ctx, db, tableName)
 
 	if err = db.CreateSchema(ctx); err != nil {
 		t.Fatalf("create schema: %v", err)

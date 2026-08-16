@@ -15,7 +15,7 @@ _examples/**/uploads/*
 _issues/**
 .DS_STORE
 
-
+.exe
 .claude
 .plexon
 .superpowers

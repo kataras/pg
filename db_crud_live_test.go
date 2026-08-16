@@ -72,7 +72,7 @@ func TestDBDeleteByID(t *testing.T) {
 	if err = setupCRUDScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+crudScratchTable)
+	defer dropTestTables(ctx, db, crudScratchTable)
 
 	id, err := insertCRUDScratchRow(ctx, db, "alpha", "a")
 	if err != nil {
@@ -109,7 +109,7 @@ func TestDBDeleteBy(t *testing.T) {
 	if err = setupCRUDScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+crudScratchTable)
+	defer dropTestTables(ctx, db, crudScratchTable)
 
 	if _, err = insertCRUDScratchRow(ctx, db, "alpha", "a"); err != nil {
 		t.Fatal(err)
@@ -153,7 +153,7 @@ func TestDBExistsByAndCountBy(t *testing.T) {
 	if err = setupCRUDScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+crudScratchTable)
+	defer dropTestTables(ctx, db, crudScratchTable)
 
 	t.Run("empty table", func(t *testing.T) {
 		exists, err := db.ExistsBy(ctx, crudScratchTable)
@@ -244,7 +244,7 @@ func TestDBTableNameCRUDUnknownTableAndColumn(t *testing.T) {
 	if err = setupCRUDScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+crudScratchTable)
+	defer dropTestTables(ctx, db, crudScratchTable)
 
 	const unknownTable = "this_table_was_never_registered"
 
@@ -291,7 +291,7 @@ func TestDBSelectSingle(t *testing.T) {
 	if err = setupCRUDScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+crudScratchTable)
+	defer dropTestTables(ctx, db, crudScratchTable)
 
 	id, err := insertCRUDScratchRow(ctx, db, "solo", "x")
 	if err != nil {

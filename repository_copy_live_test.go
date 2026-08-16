@@ -86,7 +86,7 @@ func TestRepositoryCopyFromRoundTrip(t *testing.T) {
 	if err := setupCopyScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+copyScratchTable)
+	defer dropTestTables(ctx, db, copyScratchTable)
 
 	repo := NewRepository[copyScratchItem](db)
 
@@ -165,7 +165,7 @@ func TestRepositoryCopyFromMixedDefaultColumnIncluded(t *testing.T) {
 	if err := setupCopyScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+copyScratchTable)
+	defer dropTestTables(ctx, db, copyScratchTable)
 
 	repo := NewRepository[copyScratchItem](db)
 
@@ -218,7 +218,7 @@ func TestRepositoryCopyFromRollback(t *testing.T) {
 	if err := setupCopyScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+copyScratchTable)
+	defer dropTestTables(ctx, db, copyScratchTable)
 
 	repo := NewRepository[copyScratchItem](db)
 
@@ -328,7 +328,7 @@ func TestRepositoryCopyFromGoSidePassword(t *testing.T) {
 	if err := setupCopyPasswordScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+copyPasswordScratchTable)
+	defer dropTestTables(ctx, db, copyPasswordScratchTable)
 
 	repo := NewRepository[copyPasswordScratchItem](db)
 

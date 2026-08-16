@@ -122,7 +122,7 @@ func buildUpdateQuery(td *Table, args Arguments, primaryKeyName string, shouldUp
 			}
 		}
 
-		b.WriteString(fmt.Sprintf(`"%s" = %s`, c.Name, paramName))
+		fmt.Fprintf(&b, `"%s" = %s`, c.Name, paramName)
 	}
 
 	primaryKeyWhereIndex := paramIndex + 1

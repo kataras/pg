@@ -24,6 +24,7 @@ func (c *customLooseScanner) Scan(src any) error { return nil }
 // looseAllFields exercises every LooseTable rule in one struct: name precedence, pg:"-"/json:"-"
 // skipping, unexported-field skipping, and JSON-wrap marking (including its exclusions).
 type looseAllFields struct {
+	//nolint:unused // The point of the field is that LooseTable skips it; nothing reads it.
 	unexported string // must never produce a column.
 
 	PGName   string `pg:"name=custom_pg_name" json:"json_name"` // pg name= must win over json name.

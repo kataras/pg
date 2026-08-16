@@ -243,22 +243,6 @@ func parseUniqueConstraint(constraintDefinition string) *UniqueConstraint {
 	}
 }
 
-var uniqueIndexConstraintRegexp = regexp.MustCompile(`CREATE UNIQUE INDEX (?P<name>\w+) ON (?P<schema>\w+)\.(?P<table>\w+) USING (?P<method>\w+) \((?P<columns>.*)\)`)
-
-func parseUniqueIndexConstraint(constraintDefinition string) []string {
-	// Find the submatches in the sql string
-	matches := uniqueIndexConstraintRegexp.FindStringSubmatch(constraintDefinition)
-	// Get the names of the subexpressions
-	names := uniqueIndexConstraintRegexp.SubexpNames()
-	// Create a map to store the submatches by name
-	result := make(map[string]string)
-	for i, match := range matches {
-		result[names[i]] = match
-	}
-	// Return the column names as a slice
-	return strings.Split(result["columns"], ", ")
-}
-
 // CheckConstraint is a type that represents a check constraint.
 type CheckConstraint struct {
 	// Expression is the CHECK constraint's boolean SQL expression, with the outer

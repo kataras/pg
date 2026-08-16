@@ -61,6 +61,6 @@ func buildWhereSubQueryByArguments(b *strings.Builder, args Arguments) {
 		paramIndexStr := strconv.Itoa(paramIndex)
 		paramName := "$" + paramIndexStr
 
-		b.WriteString(fmt.Sprintf("%s = %s", c.Name, paramName))
+		fmt.Fprintf(b, "%s = %s", c.Name, paramName)
 	}
 }

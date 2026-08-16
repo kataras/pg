@@ -850,7 +850,7 @@ func (db *DB) ListTriggers(ctx context.Context) ([]*desc.Trigger, error) {
 	action_timing FROM information_schema.triggers 
 	WHERE event_object_catalog = $1 AND event_object_table = ANY($2) ORDER BY event_object_table;`
 
-	rows, err := db.Query(ctx, query, db.ConnectionOptions.Config.Database, db.schema.TableNames())
+	rows, err := db.Query(ctx, query, db.ConnectionOptions.Database, db.schema.TableNames())
 	if err != nil {
 		return nil, err
 	}

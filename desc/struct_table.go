@@ -186,11 +186,12 @@ func convertStructFieldToColumnDefinion(tableName string, field reflect.StructFi
 		case 1: // shorthand for boolean options and default values if tag exists.
 			key = kv[0]
 
-			if opt == "index" {
+			switch opt {
+			case "index":
 				value = Btree.String()
-			} else if opt == "unique_index" {
+			case "unique_index":
 				// keep the value as it is.
-			} else {
+			default:
 				value = "true"
 			}
 		case 2:

@@ -141,11 +141,11 @@ func (e *ConstraintError) Error() string {
 	}
 
 	if e.ConstraintName != "" {
-		b.WriteString(fmt.Sprintf(" %q", e.ConstraintName))
+		fmt.Fprintf(&b, " %q", e.ConstraintName)
 	}
 
 	if e.TableName != "" {
-		b.WriteString(fmt.Sprintf(" on table %q", e.TableName))
+		fmt.Fprintf(&b, " on table %q", e.TableName)
 	}
 
 	if e.Detail != "" {

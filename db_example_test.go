@@ -65,6 +65,18 @@ func createTestConnectionSchema() error {
 	return nil
 }
 
+// dropTestTables drops the given scratch tables if they exist, ignoring any error.
+//
+// It exists for test teardown, which runs after the test has already made its assertions:
+// a DROP that fails leaves nothing the test can usefully report, and failing the teardown
+// would mask the real result. Tables are dropped in the order given, so pass a child table
+// before the parent it references.
+func dropTestTables(ctx context.Context, db *DB, tables ...string) {
+	for _, table := range tables {
+		_, _ = db.Exec(ctx, "DROP TABLE IF EXISTS "+table)
+	}
+}
+
 // getTestConnString returns a connection string for connecting to a test database.
 // It uses constants to define the host, port, user, password, schema, dbname, and sslmode parameters.
 //

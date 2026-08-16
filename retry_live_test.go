@@ -35,7 +35,9 @@ func TestInTransactionRetryNestedRunsOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer txDB.Rollback(ctx)
+	// Best-effort cleanup: the transaction is rolled back inside the test body, so this
+	// second Rollback is expected to report that the transaction is already closed.
+	defer func() { _ = txDB.Rollback(ctx) }()
 
 	// A fabricated, but real, SQLSTATE 40001 PgError: exactly what IsErrRetryableTx (the
 	// default classifier) would call retryable, so if InTransactionRetry retried here despite
@@ -99,7 +101,7 @@ func TestInTransactionRetrySerializationRace(t *testing.T) {
 	if err := setupRetryScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+retryScratchTable)
+	defer dropTestTables(ctx, db, retryScratchTable)
 
 	var retryableObservations int32
 

@@ -257,18 +257,15 @@ func parseColumnFilterExpression(input string) ([]*columnFilterExpression, error
 }
 
 func parseColumnNameFilterFuncs(columnName string) (prefix string, suffix string, notEqualTo string) {
-	if strings.HasPrefix(columnName, "prefix(") {
-		prefix = strings.TrimPrefix(columnName, "prefix(")
-		prefix = strings.TrimSuffix(prefix, ")")
-		columnName = prefix // assume the column name is the same as the prefix
-	} else if strings.HasPrefix(columnName, "suffix(") {
-		suffix = strings.TrimPrefix(columnName, "suffix(")
-		suffix = strings.TrimSuffix(suffix, ")")
-		columnName = suffix // assume the column name is the same as the suffix
-	} else if strings.HasPrefix(columnName, "noteq(") {
-		notEqualTo = strings.TrimPrefix(columnName, "noteq(")
-		notEqualTo = strings.TrimSuffix(notEqualTo, ")")
-		columnName = notEqualTo // assume the column name is the same as the not equal value
+	// Only the extracted argument is returned. The caller keeps the column name in its
+	// original wrapped form ("prefix(col)" rather than "col"), which is what the parser's
+	// tests assert and what the matching in FilterTable expects.
+	if after, ok := strings.CutPrefix(columnName, "prefix("); ok {
+		prefix = strings.TrimSuffix(after, ")")
+	} else if after, ok := strings.CutPrefix(columnName, "suffix("); ok {
+		suffix = strings.TrimSuffix(after, ")")
+	} else if after, ok := strings.CutPrefix(columnName, "noteq("); ok {
+		notEqualTo = strings.TrimSuffix(after, ")")
 	}
 
 	return

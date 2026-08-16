@@ -32,7 +32,7 @@ func TestInTransactionCommitError(t *testing.T) {
 	if _, err = db.Exec(ctx, fmt.Sprintf("CREATE TABLE %s (id INTEGER PRIMARY KEY)", parentTable)); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", parentTable))
+	defer dropTestTables(ctx, db, parentTable)
 
 	if _, err = db.Exec(ctx, fmt.Sprintf(
 		`CREATE TABLE %s (
@@ -41,7 +41,7 @@ func TestInTransactionCommitError(t *testing.T) {
 		)`, childTable, parentTable)); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", childTable))
+	defer dropTestTables(ctx, db, childTable)
 
 	err = db.InTransaction(ctx, func(tx *DB) error {
 		// The parent row with id=1 does not exist; this succeeds because the FK check
@@ -81,7 +81,7 @@ func TestInTransactionIntentionalRollback(t *testing.T) {
 	if _, err = db.Exec(ctx, fmt.Sprintf("CREATE TABLE %s (id SERIAL PRIMARY KEY, val TEXT)", scratchTable)); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", scratchTable))
+	defer dropTestTables(ctx, db, scratchTable)
 
 	err = db.InTransaction(ctx, func(tx *DB) error {
 		if _, err := tx.Exec(ctx, fmt.Sprintf("INSERT INTO %s (val) VALUES ($1)", scratchTable), "should not be persisted"); err != nil {
@@ -122,7 +122,7 @@ func TestInTransactionNested(t *testing.T) {
 	if _, err = db.Exec(ctx, fmt.Sprintf("CREATE TABLE %s (id SERIAL PRIMARY KEY, val TEXT)", scratchTable)); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", scratchTable))
+	defer dropTestTables(ctx, db, scratchTable)
 
 	err = db.InTransaction(ctx, func(tx *DB) error {
 		return tx.InTransaction(ctx, func(tx2 *DB) error {

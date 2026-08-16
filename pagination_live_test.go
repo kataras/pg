@@ -89,7 +89,7 @@ func TestRepositorySelectPaginated(t *testing.T) {
 	if err = setupPaginationScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+paginationScratchTable)
+	defer dropTestTables(ctx, db, paginationScratchTable)
 
 	const rowCount = 10
 	if err = seedPaginationScratchTable(ctx, db, rowCount); err != nil {
@@ -216,7 +216,7 @@ func TestRepositorySelectWithTotal(t *testing.T) {
 	if err = setupPaginationScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+paginationScratchTable)
+	defer dropTestTables(ctx, db, paginationScratchTable)
 
 	const rowCount = 10
 	if err = seedPaginationScratchTable(ctx, db, rowCount); err != nil {

@@ -72,7 +72,7 @@ func TestRepositoryInsertOnConflict(t *testing.T) {
 	if err = setupConflictScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+conflictScratchTable)
+	defer dropTestTables(ctx, db, conflictScratchTable)
 
 	repo := NewRepository[conflictScratchItem](db)
 	oc := OnConflict{Columns: []string{"a", "b"}, SetColumns: []string{"c"}}
@@ -118,7 +118,7 @@ func TestRepositoryInsertSingleOnConflictDoNothing(t *testing.T) {
 	if err = setupConflictScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+conflictScratchTable)
+	defer dropTestTables(ctx, db, conflictScratchTable)
 
 	repo := NewRepository[conflictScratchItem](db)
 	oc := OnConflict{Columns: []string{"a", "b"}, DoNothing: true}
@@ -166,7 +166,7 @@ func TestUpdateOrInsert(t *testing.T) {
 	if err = setupConflictScratchTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Exec(ctx, "DROP TABLE IF EXISTS "+conflictScratchTable)
+	defer dropTestTables(ctx, db, conflictScratchTable)
 
 	updateQuery := "UPDATE " + conflictScratchTable + " SET c = 'updated' WHERE a = $1 AND b = $2 RETURNING id"
 	insertQuery := "INSERT INTO " + conflictScratchTable + " (a,b,c) VALUES ($1,$2,$3) " +
