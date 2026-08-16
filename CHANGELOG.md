@@ -160,8 +160,11 @@ Operations:
   `errors.Is` and `errors.Join`, `reflect.Pointer`, `atomic.Bool`, range-over-int.
 - Row scanning builds a column lookup once per result set instead of scanning the column list for
   every column of every row.
-- CI runs `go vet` and the race detector, and adds a lint job. The example sub-modules and the
-  README's Go version note were brought up to date.
+- CI runs `go vet` and the race detector, and adds a lint job: `golangci-lint-action@v9` on
+  Node 24 with golangci-lint v2. The config keeps staticcheck's SA family and turns off the
+  stylistic ones, and errcheck is off, because nearly everything it found here was best-effort
+  teardown in the live tests. The example sub-modules and the README's Go version note were
+  brought up to date.
 - The test connection string can be overridden with `PG_CONNSTRING`.
 
 ### Documentation
