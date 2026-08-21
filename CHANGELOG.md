@@ -56,12 +56,18 @@ non-local types.
 ### Changed
 
 - **Migrated to `encoding/json/v2`.** The JSON/JSONB scan path and the LISTEN/NOTIFY paths pass
-  `json.MatchCaseInsensitiveNames(true)` wherever the destination is a caller-supplied type,
-  preserving v1's matching behavior: PostgreSQL emits lower-cased column names in
-  `to_jsonb(x.*)` projections, while the structs they decode into carry `pg` tags rather than
-  `json` ones. Without it those fields would silently stay at their zero values. The exported
+  `json.MatchCaseInsensitiveNames(true)` wherever the destination is a caller-supplied type:
+  PostgreSQL emits lower-cased column names in `to_jsonb(x.*)` projections, while the structs
+  they decode into carry `pg` tags rather than `json` ones, and v2 matches names exactly by
+  default. Without the option those fields would silently stay at their zero values. The exported
   `TableNotificationJSON` alias still uses `encoding/json`'s `RawMessage`, which v2 handles
   natively, so consumer code is unchanged.
+
+  The option is more permissive than v1 rather than equal to it, and that is the point. v1 folded
+  case but not `_`, so a `created_at` column never did reach a `CreatedAt` field and left it at
+  the zero value without saying so. Multi-word columns populate now. A struct that quietly took
+  the zero value in a `ListenTable` callback starts receiving real data, which is worth knowing
+  before you upgrade if any code downstream was written against the zero.
 - CI runs on Go 1.27.x and `golangci-lint` v2.13, the first release that can parse generic
   methods.
 - Applied the Go 1.27 `go fix` modernizers across the library: `reflect.TypeFor[T]()`,
@@ -81,6 +87,14 @@ non-local types.
 
 ### Fixed
 
+- **A `timestamp` column arriving over LISTEN/NOTIFY decodes instead of failing the payload.**
+  `json_build_object` renders `timestamp without time zone` as ISO 8601 with no offset, and
+  `time.Time` accepts only RFC 3339, so it refuses that string. The column never got that far
+  before, because v1's name matching skipped it; once matching started working it failed every
+  notification for a table with a `pg:"type=timestamp"` column. The LISTEN/NOTIFY decode path
+  reads both forms now and takes an offset-free timestamp as UTC. That is what pgx does when it
+  scans the same column into a `time.Time`, so a row read through a repository and the same row
+  arriving over LISTEN agree.
 - `gen`'s `getCallerPackageName` sliced the full symbol name with an index computed against a
   substring of it, so it returned a truncated package path. It now cuts at the last dot after the
   final slash, via `strings.CutLast`. (The function is currently unreferenced.)

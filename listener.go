@@ -4,8 +4,10 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -171,7 +173,55 @@ func notifyNative[T string | []byte](ctx context.Context, db *DB, channel string
 // It is deliberately applied only where the destination is a caller-supplied type. Payloads
 // decoded into this package's own structs (TableNotification, which tags every field
 // explicitly) keep v2's exact matching.
-var jsonDecodeOptions = json.MatchCaseInsensitiveNames(true)
+var jsonDecodeOptions = json.JoinOptions(
+	json.MatchCaseInsensitiveNames(true),
+	json.WithUnmarshalers(json.UnmarshalFunc(unmarshalRowTime)),
+)
+
+// rowTimestampLayout is ISO 8601 with no offset: what PostgreSQL renders for a
+// "timestamp without time zone" column inside to_json, to_jsonb and json_build_object, and
+// what a bare timestamp literal cast from a string looks like. It is deliberately the same
+// layout pgx uses in pgtype.Timestamp.UnmarshalJSON, for the same reason.
+const rowTimestampLayout = "2006-01-02T15:04:05.999999999"
+
+// unmarshalRowTime decodes a JSON string into a time.Time the way a row value actually
+// arrives, rather than the way time.Time alone accepts.
+//
+// time.Time unmarshals RFC 3339 and nothing else. A "timestamp with time zone" column carries
+// the offset and parses fine; a plain "timestamp" column does not, and json_build_object emits
+// it offset-free. Before this, such a field either stayed silently at its zero value (v1 never
+// matched created_at to CreatedAt in the first place) or failed the whole payload once name
+// matching started working. Neither is a usable answer for a column type this common.
+//
+// A timestamp without a time zone has no offset to recover, so the wall-clock reading is taken
+// as UTC. That is the same choice pgx makes when scanning the same column into a time.Time, and
+// the two paths agreeing is the point: a row read through a Repository and the same row arriving
+// over LISTEN produce the same value.
+func unmarshalRowTime(b []byte, t *time.Time) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	// A NULL column arrives as JSON null, which json.Unmarshal above decodes to "". Leave the
+	// destination at its zero value rather than reporting a parse failure for an absent value.
+	if s == "" {
+		*t = time.Time{}
+		return nil
+	}
+
+	parsed, err := time.Parse(time.RFC3339Nano, s)
+	if err != nil {
+		parsed, err = time.ParseInLocation(rowTimestampLayout, s, time.UTC)
+		if err != nil {
+			return fmt.Errorf("cannot unmarshal %q as %s or %s: %w",
+				s, time.RFC3339Nano, rowTimestampLayout, err)
+		}
+	}
+
+	*t = parsed
+	return nil
+}
 
 // UnmarshalNotification returns the notification payload as a custom type of T.
 func UnmarshalNotification[T any](n *Notification) (T, error) {

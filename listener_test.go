@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"testing"
 	"time"
@@ -86,5 +87,102 @@ func TestListenerCloseIdempotent(t *testing.T) {
 		if err := l.Close(context.Background()); err != nil {
 			t.Fatalf("Close call #%d: expected nil, got: %v", i, err)
 		}
+	}
+}
+
+// rowTimestampEntity mirrors the shape of a registered entity: snake_case column names in the
+// payload, CamelCase Go fields, and both flavors of timestamp column.
+type rowTimestampEntity struct {
+	ID        string    `pg:"type=uuid,primary"`
+	CreatedAt time.Time `pg:"type=timestamp"`
+	UpdatedAt time.Time `pg:"type=timestamptz"`
+	DeletedAt time.Time `pg:"type=timestamp"`
+	Name      string    `pg:"type=varchar(255)"`
+}
+
+// TestUnmarshalNotificationRowTimestamp covers the payload PostgreSQL actually produces for a
+// row: json_build_object renders a `timestamp without time zone` column as ISO 8601 with no
+// offset, which is not RFC 3339 and which time.Time refuses on its own. pgx solves this the
+// same way for pgtype.Timestamp, and the two paths have to agree: a column read through a
+// repository and the same column arriving over LISTEN must produce the same time.Time.
+func TestUnmarshalNotificationRowTimestamp(t *testing.T) {
+	const payload = `{"id":"11111111-1111-1111-1111-111111111111",` +
+		`"created_at":"2026-08-21T13:16:03.161728",` +
+		`"updated_at":"2026-08-21T13:16:03.161728+00:00",` +
+		`"deleted_at":null,` +
+		`"name":"Makis"}`
+
+	got, err := UnmarshalNotification[rowTimestampEntity](&Notification{Payload: payload})
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	want := time.Date(2026, 8, 21, 13, 16, 3, 161728000, time.UTC)
+
+	if !got.CreatedAt.Equal(want) {
+		t.Errorf("created_at: got %v, want %v", got.CreatedAt, want)
+	}
+	if !got.UpdatedAt.Equal(want) {
+		t.Errorf("updated_at: got %v, want %v", got.UpdatedAt, want)
+	}
+	if !got.DeletedAt.IsZero() {
+		t.Errorf("deleted_at: got %v, want the zero time for a JSON null", got.DeletedAt)
+	}
+	if got.Name != "Makis" {
+		t.Errorf("name: got %q, want %q", got.Name, "Makis")
+	}
+}
+
+// TestListenTableDecodeChainRowTimestamp walks the whole decode chain ExampleRepository_ListenTable
+// exercises, without a server: the trigger's json_build_object payload into TableNotificationJSON
+// (exact name matching, this package's own tags), then its "new" member into the caller's entity
+// (case-insensitive matching, pg tags). The customers table's created_at and updated_at are
+// `pg:"type=timestamp"`, so both arrive without an offset.
+func TestListenTableDecodeChainRowTimestamp(t *testing.T) {
+	const payload = `{"table":"customers","change":"INSERT","old":null,"new":{` +
+		`"id":"11111111-1111-1111-1111-111111111111",` +
+		`"created_at":"2026-08-21T13:16:03.161728",` +
+		`"updated_at":"2026-08-21T13:16:03.161728",` +
+		`"cognito_user_id":"766064d4-a2a7-442d-aa75-33493bb4dbb9",` +
+		`"email":"kataras2024@hotmail.com",` +
+		`"name":"Makis",` +
+		`"username":""}}`
+
+	var outer TableNotificationJSON
+	if err := json.Unmarshal([]byte(payload), &outer); err != nil {
+		t.Fatalf("decode notification envelope: %v", err)
+	}
+
+	if outer.Table != "customers" {
+		t.Errorf("table: got %q, want %q", outer.Table, "customers")
+	}
+	if outer.Change != TableChangeTypeInsert {
+		t.Errorf("change: got %q, want %q", outer.Change, TableChangeTypeInsert)
+	}
+	if len(outer.Old) > 0 && string(outer.Old) != "null" {
+		t.Errorf("old: got %s, want null for an INSERT", outer.Old)
+	}
+
+	var got Customer
+	if err := json.Unmarshal(outer.New, &got, jsonDecodeOptions); err != nil {
+		t.Fatalf("decode new row into Customer: %v", err)
+	}
+
+	if got.Name != "Makis" {
+		t.Errorf("name: got %q, want %q", got.Name, "Makis")
+	}
+	if got.Email != "kataras2024@hotmail.com" {
+		t.Errorf("email: got %q, want %q", got.Email, "kataras2024@hotmail.com")
+	}
+	if got.CognitoUserID != "766064d4-a2a7-442d-aa75-33493bb4dbb9" {
+		t.Errorf("cognito_user_id: got %q", got.CognitoUserID)
+	}
+
+	want := time.Date(2026, 8, 21, 13, 16, 3, 161728000, time.UTC)
+	if !got.CreatedAt.Equal(want) {
+		t.Errorf("created_at: got %v, want %v", got.CreatedAt, want)
+	}
+	if !got.UpdatedAt.Equal(want) {
+		t.Errorf("updated_at: got %v, want %v", got.UpdatedAt, want)
 	}
 }
