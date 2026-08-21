@@ -41,11 +41,11 @@ func ExampleGenerateSchemaFromDatabase() {
 					case "blog_posts":
 						switch columnName {
 						case "feature":
-							column.FieldType = reflect.TypeOf(Feature{})
+							column.FieldType = reflect.TypeFor[Feature]()
 						case "other_features":
-							column.FieldType = reflect.TypeOf(Features{})
+							column.FieldType = reflect.TypeFor[Features]()
 						case "tags":
-							column.FieldType = reflect.TypeOf([]Tag{})
+							column.FieldType = reflect.TypeFor[[]Tag]()
 						}
 					}
 

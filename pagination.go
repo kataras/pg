@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-
-	"github.com/kataras/pg/desc"
 )
 
 // PageOptions describes LIMIT/OFFSET pagination and ordering for SelectPaginated.
@@ -50,7 +48,7 @@ type PageOptions struct {
 // bind-numbering rules.
 //
 // Row scanning for the page query is identical to Repository.Select (SelectPaginated delegates
-// to it directly): rows are converted to []T via desc.RowsToStruct against the repository's
+// to it directly): rows are converted to []T via desc.Table.RowsToStruct against the repository's
 // table descriptor.
 func (repo *Repository[T]) SelectPaginated(ctx context.Context, page PageOptions, query string, args ...any) ([]T, int64, error) {
 	query = trimQuery(query)
@@ -83,7 +81,7 @@ func (repo *Repository[T]) SelectPaginated(ctx context.Context, page PageOptions
 
 // SelectWithTotal executes a caller-authored query whose SELECT list includes a
 // COUNT(*) OVER() window column named "total_count", scanning rows into T while capturing the
-// total out-of-band via desc.RowsToStructWithTotal, so T needs no artificial total-count field
+// total out-of-band via desc.Table.RowsToStructWithTotal, so T needs no artificial total-count field
 // for it, unlike the fake struct fields tagged `presenter` this replaces.
 //
 // Unlike SelectPaginated, SelectWithTotal does not derive a separate COUNT query, does not
@@ -100,7 +98,7 @@ func (repo *Repository[T]) SelectWithTotal(ctx context.Context, query string, ar
 		return nil, 0, err
 	}
 
-	items, total, err := desc.RowsToStructWithTotal[T](repo.td, rows, "total_count")
+	items, total, err := repo.td.RowsToStructWithTotal[T](rows, "total_count")
 	if err != nil {
 		return nil, 0, err
 	}

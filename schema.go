@@ -252,10 +252,8 @@ func (s *Schema) TableNames(types ...desc.TableType) []string {
 func (s *Schema) HasColumnType(dataTypes ...desc.DataType) bool {
 	for _, td := range s.Tables() { // loop over all the tables in the schema (sorted by their registered position)
 		for _, col := range td.Columns { // loop over all the columns in each table
-			for _, dt := range dataTypes {
-				if col.Type == dt { // if the column has the same data type as given
-					return true // return true
-				}
+			if slices.Contains(dataTypes, col.Type) { // if the column has the same data type as given
+				return true // return true
 			}
 		}
 	}

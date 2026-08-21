@@ -108,7 +108,7 @@ func (m *Manager) AddJob(ctx context.Context, job *Job) error {
 	// }
 	var err error
 	query := `SELECT id FROM cron_jobs WHERE name = $1;`
-	job.ID, err = pg.QuerySingle[string](ctx, m.db, query, job.Name)
+	job.ID, err = m.db.QuerySingle[string](ctx, query, job.Name)
 	if err != nil && !errors.Is(err, pg.ErrNoRows) {
 		return fmt.Errorf("failed to check job existence: %w", err)
 	}

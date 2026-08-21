@@ -12,7 +12,7 @@ commit itself fails. It also covers a real bug this library once had
 in that last case, because the fix teaches something true about how Go
 defers and named results interact. Then it covers nesting (joining an
 outer transaction versus opening a savepoint), the generic
-`pg.InTransaction[R]` helper, concurrent access to a single
+`DB.InTransactionWrap[R]` method, concurrent access to a single
 transaction, and the retry machinery for SQLSTATE 40001 and 40P01.
 Every signature below was checked against `tx.go`, `db.go`,
 `retry.go`, `concurrent_tx.go`, `db_exec.go` and `repository.go`.
@@ -25,7 +25,7 @@ Every signature below was checked against `tx.go`, `db.go`,
 - [Nesting: Join Versus Savepoint](#nesting-join-versus-savepoint)
 - [Manual Control: Begin, Commit, Rollback, IsTransaction](#manual-control-begin-commit-rollback-istransaction)
 - [Repository InTransaction](#repository-intransaction)
-- [pg.InTransaction and Typed Wrappers](#pgintransaction-and-typed-wrappers)
+- [DB.InTransactionWrap and Typed Wrappers](#dbintransactionwrap-and-typed-wrappers)
 - [Concurrent Access to One Transaction](#concurrent-access-to-one-transaction)
 - [Retrying Transient Failures](#retrying-transient-failures)
 - [RetryOptions](#retryoptions)
@@ -298,7 +298,7 @@ each batches its rows into multi-row statements internally and calls
 `InTransaction` so a later batch's failure rolls back every earlier
 batch from the same call.
 
-## pg.InTransaction and Typed Wrappers
+## DB.InTransactionWrap and Typed Wrappers
 
 A real application usually has more than one `Repository[T]`, and code
 often groups several of them into a small struct so a service layer
@@ -322,16 +322,27 @@ Without help, giving `*Repositories` its own transactional method
 means hand-writing the same three lines every such wrapper needs:
 open a transaction on the underlying `*DB`, reconstruct the wrapper
 type around that transactional `*DB`, and call the caller's function
-with it. `pg.InTransaction[R]` is exactly that boilerplate, generalized
-once:
+with it. `DB.InTransactionWrap[R]` is exactly that boilerplate,
+generalized once:
 
 ```go
-func InTransaction[R any](
-    ctx context.Context, db *DB, wrap func(*DB) R, fn func(R) error,
+func (db *DB) InTransactionWrap[R any](
+    ctx context.Context, wrap func(*DB) R, fn func(R) error,
 ) error {
     return db.InTransaction(ctx, func(tx *DB) error { return fn(wrap(tx)) })
 }
 ```
+
+**The two `InTransaction` names on `*DB` are different things.**
+`db.InTransaction(ctx, fn func(*DB) error)` is the plain closure form
+covered earlier in this chapter. `db.InTransactionWrap(ctx, wrap, fn)`
+is this one: it takes a constructor and calls `fn` with the
+constructed `R`, never with the `*DB`. The second name exists because
+a method name must be unique per receiver type, so the generic form
+could not also be called `InTransaction`; in earlier releases of pg it
+was the package-level function `pg.InTransaction[R](ctx, db, wrap,
+fn)`, and moving it onto `*DB` (Go 1.27 allows a method to declare its
+own type parameters) forced the rename.
 
 Using it, `Repositories` needs one line instead of a hand-written
 method:
@@ -340,7 +351,7 @@ method:
 func (r *Repositories) InTransaction(
     ctx context.Context, fn func(*Repositories) error,
 ) error {
-    return pg.InTransaction(ctx, r.Customers.DB(), NewRepositories, fn)
+    return r.Customers.DB().InTransactionWrap(ctx, NewRepositories, fn)
 }
 
 // Usage:
@@ -354,7 +365,7 @@ err := repos.InTransaction(ctx, func(tx *Repositories) error {
 ```
 
 `wrap` is typically the wrapper's own constructor, exactly as
-`NewRepositories` is above: `pg.InTransaction` calls `db.InTransaction`
+`NewRepositories` is above: `InTransactionWrap` calls `db.InTransaction`
 once, calls `wrap(tx)` to rebuild `*Repositories` (or whatever `R` is)
 around the now-transactional `*DB`, then calls `fn` with that rebuilt
 value. If `db` is already inside a transaction, the nesting rule from
@@ -660,10 +671,12 @@ embedded in the generated statement.
   one opens a real, independently committable/rollback-able
   savepoint-backed subtransaction via pgx's nested `Tx.Begin`.
 - `Repository[T].InTransaction` mirrors `DB.InTransaction` at the
-  typed level; `pg.InTransaction[R]` generalizes the "open a
+  typed level; `DB.InTransactionWrap[R]` generalizes the "open a
   transaction, rebuild my typed wrapper around it" pattern so a
   multi-repository aggregate needs one line instead of a hand-written
-  method.
+  method. It is named `InTransactionWrap`, not `InTransaction`,
+  because `DB.InTransaction` already exists with a different
+  signature.
 - `BeginConcurrent`/`ConcurrentTx` make a transaction safe to touch
   from several goroutines by serializing every call through a mutex.
   Safe, not parallel: PostgreSQL connections process one statement at

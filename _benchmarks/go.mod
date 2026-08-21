@@ -1,11 +1,10 @@
 module benchmarks
 
-go 1.26
+go 1.27
 
 replace github.com/kataras/pg => ../
 
 require (
-	github.com/google/uuid v1.3.0
 	github.com/kataras/pg v0.0.0-00010101000000-000000000000
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.3

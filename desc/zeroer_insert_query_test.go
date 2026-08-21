@@ -33,7 +33,7 @@ type uuidPKRow struct {
 // pointer is non-nil but points at the zero UUID, and must include it when
 // the UUID is non-zero.
 func TestBuildInsertQueryUUIDPKZeroValue(t *testing.T) {
-	td, err := ConvertStructToTable("uuid_pk_rows", reflect.TypeOf(uuidPKRow{}))
+	td, err := ConvertStructToTable("uuid_pk_rows", reflect.TypeFor[uuidPKRow]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}

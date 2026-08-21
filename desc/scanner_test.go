@@ -169,7 +169,7 @@ func TestFindScanTargetsCaseInsensitive(t *testing.T) {
 	col := &Column{
 		Name:       "MyCol",
 		FieldIndex: []int{0},
-		FieldType:  reflect.TypeOf(""),
+		FieldType:  reflect.TypeFor[string](),
 		Type:       Text,
 	}
 	td := &Table{Name: "row", Columns: []*Column{col}}

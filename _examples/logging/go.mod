@@ -1,6 +1,6 @@
 module example_logging
 
-go 1.26
+go 1.27
 
 replace github.com/kataras/pg => ../../
 

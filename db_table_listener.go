@@ -2,7 +2,8 @@ package pg
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -65,7 +66,11 @@ type (
 	}
 
 	// TableNotificationJSON is the generic version of the TableNotification.
-	TableNotificationJSON = TableNotification[json.RawMessage]
+	//
+	// It stays on encoding/json's RawMessage (rather than switching to
+	// encoding/json/jsontext.Value) so that callers holding a TableNotificationJSON keep
+	// compiling unchanged; encoding/json/v2 handles RawMessage as raw JSON natively.
+	TableNotificationJSON = TableNotification[jsonv1.RawMessage]
 )
 
 // GetPayload returns the raw payload of the notification.

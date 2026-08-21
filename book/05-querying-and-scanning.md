@@ -4,8 +4,9 @@ Raw SQL is first-class in pg. A `*DB` and a `*Repository[T]` both
 expose `Query`, `QueryRow`, `QueryBoolean`, `Exec`, `Mutate`,
 `MutateSingle` and `Count` directly, so you never have to fight the
 library to write the query you actually want. On top of that, a small
-set of generic helpers in `common.go` (`QuerySlice`, `QueryTwoSlices`,
-`QueryMap`, `QuerySingle`, `QueryFunc`) remove the boilerplate of
+set of generic `*DB` methods in `common.go` (`QuerySlice`,
+`QueryTwoSlices`, `QueryMap`, `QuerySingle`, `QueryFunc`), each with
+its own type parameters, remove the boilerplate of
 looping over `pgx.Rows` for the common shapes: a single column, two
 columns, or a hand-written scan function. When the result shape is a
 struct, `Repository[T].Select` scans through the table's registered
@@ -105,25 +106,32 @@ It runs `query`, hands the resulting `Rows` to `scannerFunc`, and
 closes them afterward regardless of what `scannerFunc` returns. Reach
 for `DB.Select` when you want to drive `rows.Next()`/`rows.Scan()`
 yourself without worrying about closing the rows on every exit path;
-reach for `QuerySlice`, `QueryFunc` or `QueryStructs` (below) when the
+reach for `db.QuerySlice`, `db.QueryFunc` or `db.QueryStructs` (below) when the
 result fits one of their shapes, since they save you from writing that
 loop at all.
 
 ## The Generic Query Helpers
 
 **`common.go` exists because most result sets are shaped like a list
-of one thing, not a list of structs.** Five package-level generic
-functions cover the common non-struct shapes, all sharing the same
-convention: a query yielding no rows returns an empty, non-nil result
-and a nil error, never `ErrNoRows`.
+of one thing, not a list of structs.** Five generic methods on `*DB`
+cover the common non-struct shapes, all sharing the same convention: a
+query yielding no rows returns an empty, non-nil result and a nil
+error, never `ErrNoRows`.
 
-`QuerySlice[T any](ctx, db, query, args...) ([]T, error)` scans a
+These are *methods* that carry their own type parameters, a Go 1.27
+feature; before that, Go only allowed type parameters on functions, so
+earlier releases of pg shipped them as package-level functions taking
+the `*DB` as their first argument. If you are upgrading, rewrite
+`pg.QuerySlice[string](ctx, db, q)` as `db.QuerySlice[string](ctx, q)`
+and so on for the whole family.
+
+`(db *DB) QuerySlice[T any](ctx, query, args...) ([]T, error)` scans a
 single-column result directly into a `[]T`, where `T` is any type
 `rows.Scan` accepts on its own (`string`, `int64`, `time.Time`, a
 `uuid.UUID`, and so on):
 
 ```go
-names, err := pg.QuerySlice[string](ctx, db,
+names, err := db.QuerySlice[string](ctx,
     "SELECT name FROM customers WHERE active;")
 ```
 
@@ -132,18 +140,18 @@ result from the returned list; this is a documented quirk, not a
 general "skip zero values" rule, and it does not apply to `QueryIter`
 ([Chapter 8](08-bulk-loading-and-streaming.md)) or any other helper.
 
-`QueryTwoSlices[T, V any](ctx, db, query, args...) ([]T, []V, error)`
-is the same idea for a two-column query, returning two parallel
+`(db *DB) QueryTwoSlices[T, V any](ctx, query, args...) ([]T, []V,
+error)` is the same idea for a two-column query, returning two parallel
 slices instead of a slice of pairs.
 
-`QueryMap[K comparable, V any](ctx, db, query, args...) (map[K]V,
+`(db *DB) QueryMap[K comparable, V any](ctx, query, args...) (map[K]V,
 error)` scans a two-column query into a map keyed by the first column.
 A later duplicate key overwrites an earlier one, so if you need a
 specific row to win, order the query accordingly (an `ORDER BY` that
 places the winning row last). A no-rows query returns an empty,
 non-nil map, matching the rest of the family.
 
-`QuerySingle[T any](ctx, db, query, args...) (T, error)` is the
+`(db *DB) QuerySingle[T any](ctx, query, args...) (T, error)` is the
 single-row, single-column case, built on `QueryRow(...).Scan(&entry)`.
 It does surface `ErrNoRows` (there is no list to fall back to empty),
 so check for it with `pg.IsErrNoRows(err)` when the caller needs to
@@ -152,8 +160,8 @@ tell "no row" apart from a real failure.
 The last member of the family handles everything QuerySlice cannot
 express: a handful of columns combined into an ad hoc type.
 `ScanFunc[T any]` is `func(rows Rows) (T, error)`, and
-`QueryFunc[T any](ctx, db, scan ScanFunc[T], query, args...) ([]T,
-error)` calls it once per row:
+`(db *DB) QueryFunc[T any](ctx, scan ScanFunc[T], query, args...)
+([]T, error)` calls it once per row:
 
 ```go
 type nameAndCount struct {
@@ -161,14 +169,14 @@ type nameAndCount struct {
     Count int64
 }
 
-rows, err := pg.QueryFunc(ctx, db, func(rows pg.Rows) (nameAndCount, error) {
+rows, err := db.QueryFunc(ctx, func(rows pg.Rows) (nameAndCount, error) {
     var nc nameAndCount
     err := rows.Scan(&nc.Name, &nc.Count)
     return nc, err
 }, "SELECT name, COUNT(*) FROM customers GROUP BY name ORDER BY name;")
 ```
 
-Every one of these five functions is a thin loop over `db.Query`
+Every one of these five methods is a thin loop over `db.Query`
 followed by `rows.Next()`/your scan step/`rows.Err()`, with the
 `rows.Close()` handled for you via `defer`. Pick `QueryFunc` only when
 the row genuinely does not fit a registered struct or a
@@ -190,9 +198,10 @@ customer, err := repo.SelectSingle(ctx,
     "SELECT * FROM customers WHERE id = $1", id)
 ```
 
-Under the hood both delegate to `desc.RowsToStruct[T]` and
-`desc.RowToStruct[T]`, which take the repository's cached `*desc.Table`
-and a `pgx.Rows`. A third exported function, `desc.ConvertRowsToStruct
+Under the hood both delegate to generic methods on the repository's
+cached `*desc.Table`: `td.RowsToStruct[T](rows pgx.Rows) ([]T, error)`
+and `td.RowToStruct[T](rows pgx.Rows) (T, error)`. A third entry
+point, the plain function `desc.ConvertRowsToStruct
 (td *desc.Table, rows pgx.Rows, valuePtr any) error`, scans exactly one
 already-positioned row (after a successful `rows.Next()`) into an
 existing pointer, and is what `DB.SelectByID` and
@@ -200,7 +209,7 @@ existing pointer, and is what `DB.SelectByID` and
 [Chapter 8](08-bulk-loading-and-streaming.md)) build on when a `[]T`
 or a `T` return value is not what the caller needs.
 
-Column resolution is O(1) per column: `desc.RowsToStruct` builds a
+Column resolution is O(1) per column: `RowsToStruct` builds a
 case-insensitive lookup of the table's columns once, before the row
 loop, rather than re-scanning `td.Columns` for every column of every
 row. A column with no matching struct field is routed to a no-op
@@ -210,14 +219,14 @@ table also gets type-aware scan targets you do not have to think
 about: a nullable `UUID`/`Text`/`CharacterVarying` column tolerates an
 unexpected `NULL` into a plain (non-pointer) string field, a nullable
 `JSONB`/`JSON` column that is not itself a `sql.Scanner` is decoded
-with `encoding/json` automatically, and a `password` column (see
+with `encoding/json/v2` automatically, and a `password` column (see
 [Chapter 7](07-writing-data.md)) is routed through the table's
 `PasswordHandler` if one is configured.
 
 ## Ad Hoc Read Models: QueryStructs, QueryStruct, ScanStructs
 
 `Repository[T]` requires `T` to be registered; `NewRepository[T]`
-panics otherwise. Three package-level functions in `scan.go` exist for
+panics otherwise. Three generic entry points in `scan.go` exist for
 exactly the opposite situation: scanning a query's result into a
 struct that was never registered at all, typically a join result or a
 presenter shape assembled just for one query.
@@ -229,16 +238,19 @@ type OrderWithCustomer struct {
     Customer *Customer // populated from to_jsonb(c.*) AS customer.
 }
 
-rows, err := pg.QueryStructs[OrderWithCustomer](ctx, db, `
+rows, err := db.QueryStructs[OrderWithCustomer](ctx, `
     SELECT o.id, o.total, to_jsonb(c.*) AS customer
     FROM orders o JOIN customers c ON c.id = o.customer_id`)
 ```
 
-`QueryStructs[T any](ctx, db, query, args...) ([]T, error)` runs
-`query` and scans every row into `T`. `QueryStruct[T any](ctx, db,
+`(db *DB) QueryStructs[T any](ctx, query, args...) ([]T, error)` runs
+`query` and scans every row into `T`. `(db *DB) QueryStruct[T any](ctx,
 query, args...) (T, error)` is the single-row counterpart and reports
-`ErrNoRows` when the query yields nothing. `ScanStructs[T any](rows
-Rows) ([]T, error)` scans an already-open `Rows` value (from
+`ErrNoRows` when the query yields nothing. `pg.ScanStructs[T any](rows
+Rows) ([]T, error)` is a package-level function rather than a method,
+because `Rows` is a type alias for `pgx.Rows` and Go does not allow
+methods on a type declared in another package. It scans an
+already-open `Rows` value (from
 `db.Query`, `repo.Query`, or a transaction's `Query`) the same way, and
 closes it before returning.
 
@@ -274,7 +286,12 @@ this order:
 2. The `json` tag's name, e.g. `` json:"foodId,omitempty" `` maps to
    `foodId`. A bare `` json:"-" `` skips the field entirely, following
    `encoding/json`'s own convention; `` json:"-," `` (with the trailing
-   comma) is instead read as the literal column name `-`.
+   comma) is instead read as the literal column name `-`. That second
+   rule is `LooseTable`'s own: it parses the `json` tag itself with
+   `strings.Cut`, so it is unaffected by the library's move to
+   `encoding/json/v2`, which rejects `` json:"-," `` outright as a
+   malformed tag rather than treating it as the name `-` the way v1
+   did. Column naming and JSON decoding are separate steps here.
 3. `SnakeCase(field name)`, e.g. `FoodID` maps to `food_id`.
 
 A field tagged `` pg:"-" `` is skipped outright, checked before the
@@ -322,7 +339,15 @@ carve-outs:
 
 A non-pointer JSON-marked field is scanned through the same
 `jsonScanner` a registered table's JSONB column uses, which both
-decodes with `encoding/json` and tolerates a SQL `NULL` as a no-op. A
+decodes with `encoding/json/v2` and tolerates a SQL `NULL` as a no-op.
+`jsonScanner` passes `json.MatchCaseInsensitiveNames(true)`, and that
+option is load-bearing rather than cosmetic: a `to_jsonb(x.*)` or
+`row_to_json(...)` projection carries PostgreSQL's lower-cased column
+names as its keys, while the Go structs it decodes into carry `pg`
+tags, or no tags at all. `encoding/json/v2` matches names exactly by
+default, so without the option a `Name` field would silently stay at
+its zero value for a `"name"` key. With it, the behavior you see is
+the same case-insensitive matching v1 gave you for free. A
 pointer field (such as `Customer *Customer` above) takes a different,
 also pre-existing path: pgx's own `pgtype.JSONCodec` already decodes
 generically into any Go pointer-to-pointer destination, allocating the
@@ -348,7 +373,7 @@ const joinQuery = `
     SELECT c.id, c.name, to_jsonb(p.*) AS parent, c.parent_id
     FROM child c JOIN parent p ON p.id = c.parent_id`
 
-items, err := pg.QueryStructs[adHocItem](ctx, db, joinQuery)
+items, err := db.QueryStructs[adHocItem](ctx, joinQuery)
 ```
 
 Three things happen at once here, all covered above: `c.id` and
@@ -367,18 +392,21 @@ hand-written `rows.Scan` call.
   versions delegate straight through. `DB.Select` is the callback form
   (`func(Rows) error`); `Repository[T].Select`/`SelectSingle` return a
   `[]T`/`T` directly.
-- `QuerySlice`, `QueryTwoSlices`, `QueryMap` and `QuerySingle` cover
-  one- and two-column result shapes without a hand-written scan loop;
-  `QueryFunc` plus a `ScanFunc[T]` covers everything else that is not a
-  registered struct.
-- A registered `T` scans through `desc.RowsToStruct`/`RowToStruct` (or
-  `ConvertRowsToStruct` for a single already-positioned row), matching
-  columns case-insensitively via a lookup built once per query, not
-  once per row.
-- `QueryStructs`, `QueryStruct` and `ScanStructs` scan into an
-  unregistered, ad hoc struct via `desc.LooseTable`; `QueryStructs`/
-  `QueryStruct` first check whether `T` happens to be registered in
-  `db`'s `Schema` and use that descriptor instead when it is.
+- `db.QuerySlice`, `db.QueryTwoSlices`, `db.QueryMap` and
+  `db.QuerySingle` cover one- and two-column result shapes without a
+  hand-written scan loop; `db.QueryFunc` plus a `ScanFunc[T]` covers
+  everything else that is not a registered struct. All five are generic
+  methods on `*DB`, not package-level functions.
+- A registered `T` scans through the table descriptor's own
+  `td.RowsToStruct[T]`/`td.RowToStruct[T]` (or the
+  `desc.ConvertRowsToStruct` function for a single already-positioned
+  row), matching columns case-insensitively via a lookup built once per
+  query, not once per row.
+- `db.QueryStructs`, `db.QueryStruct` and the `pg.ScanStructs` function
+  scan into an unregistered, ad hoc struct via `desc.LooseTable`;
+  `QueryStructs`/`QueryStruct` first check whether `T` happens to be
+  registered in `db`'s `Schema` and use that descriptor instead when it
+  is.
 - `LooseTable` resolves a column name from the `pg` tag's `name=`
   option, then the `json` tag, then `SnakeCase(field name)`; it never
   flattens embedded structs, marks every column nullable, and ignores
@@ -386,7 +414,10 @@ hand-written `rows.Scan` call.
 - A struct, map or slice field JSON-decodes automatically, except
   `time.Time`, `[]byte`, `sql.Scanner` implementors and pgx's own
   `pgtype` types; this is what makes `to_jsonb(x.*) AS field` scan
-  straight into a struct field with no manual unmarshaling.
+  straight into a struct field with no manual unmarshaling. Decoding
+  goes through `encoding/json/v2` with
+  `json.MatchCaseInsensitiveNames(true)`, which keeps the
+  case-insensitive key matching those projections depend on.
 
 ## Further Reading
 
@@ -395,8 +426,9 @@ hand-written `rows.Scan` call.
   chapter builds on.
 - [PostgreSQL: JSON Functions and Operators](https://www.postgresql.org/docs/current/functions-json.html):
   `to_jsonb`, `row_to_json` and the rest of the JSON function family.
-- [Go: encoding/json](https://pkg.go.dev/encoding/json):
-  the decoder every JSON-marked field goes through.
+- [Go: encoding/json/v2](https://pkg.go.dev/encoding/json/v2):
+  the decoder every JSON-marked field goes through, including the
+  `MatchCaseInsensitiveNames` option pg passes to it.
 - [database/sql.Scanner](https://pkg.go.dev/database/sql#Scanner):
   the interface `LooseTable` and the registered-table scanner both
   check for before deciding to JSON-wrap a field.

@@ -4,8 +4,7 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/kataras/pg"
 
@@ -44,7 +43,7 @@ func BenchmarkDB_InsertSingle_Gorm(b *testing.B) {
 	// db.Clauses(clause.OnConflict{DoUpdates: clause.Assignments(map[string]any{"cognito_user_id": `EXCLUDED.cognito_user_id`})}).
 
 	customer := Customer{
-		CognitoUserID: uuid.NewString(),
+		CognitoUserID: uuid.New().String(),
 	}
 
 	db.
@@ -66,7 +65,7 @@ func BenchmarkDB_InsertSingle_Pg(b *testing.B) {
 	*/
 
 	// Automatically takes care of id, created_at and updated_at fields.
-	customer := Customer{CognitoUserID: uuid.NewString()}
+	customer := Customer{CognitoUserID: uuid.New().String()}
 
 	err = db.InsertSingle(context.Background(), customer, &customer.ID)
 	if err != nil {

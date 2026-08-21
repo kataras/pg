@@ -25,6 +25,7 @@ and function name below is read directly out of
 - [The Schema Registry](#the-schema-registry)
 - [Views and Presenters](#views-and-presenters)
 - [Data Types](#data-types)
+- [uuid.UUID Fields](#uuiduuid-fields)
 - [Identifier Validation](#identifier-validation)
 - [Summary](#summary)
 - [Further Reading](#further-reading)
@@ -101,8 +102,14 @@ one-to-one table splits, is left alone) gets the default
 `gen_random_uuid()` filled in for you:
 
 ```go
-ID string `pg:"type=uuid,primary"` // gets default=gen_random_uuid()
+// Either spelling of the field gets default=gen_random_uuid():
+ID string    `pg:"type=uuid,primary"`
+ID uuid.UUID `pg:"primary"` // no type= needed; see below
 ```
+
+The second form is the Go 1.27 standard library's `uuid.UUID`, which
+pg maps to a `uuid` column on its own; see
+[uuid.UUID Fields](#uuiduuid-fields).
 
 `Column.IsGeneratedPrimaryUUID()` and `Column.IsGeneratedTimestamp()`
 (true for a time-typed column defaulting to `clock_timestamp()` or
@@ -378,15 +385,68 @@ time.
 column a default based on the Go field's type before the tag is even
 parsed (`string` to `Text`, `int`/`int32`/`int64` to `Integer`,
 `float32`/`float64` to `Numeric`, `bool` to `Boolean`, `time.Time` to
-`Timestamp`, and so on), and a `type=` in the tag simply overrides
-that default. In practice you still write `type=` explicitly for
-anything the default gets wrong for your schema: a `uuid`-holding
+`Timestamp`, `uuid.UUID` to `UUID`, `[]uuid.UUID` to `UUIDArray`, and
+so on), and a `type=` in the tag simply overrides that default. In
+practice you still write `type=` explicitly for anything the default
+gets wrong for your schema: a `uuid`-holding
 `string` field, a `varchar(255)` with an explicit length, a `jsonb`
 column, or any array or range type. `CIText` and `HStore` also need
 their PostgreSQL extension created before `CreateSchema` runs
 (`CREATE EXTENSION IF NOT EXISTS citext`/`hstore`), which
 `CreateSchema` does automatically whenever a registered column uses
 one of them.
+
+## uuid.UUID Fields
+
+Go 1.27 added a `uuid` package to the standard library, and pg treats
+`uuid.UUID` (a 16-byte array, with `uuid.New`, `uuid.NewV4`,
+`uuid.NewV7`, `uuid.Parse` and friends around it) as a first-class
+field type. `goTypeToDataType` classifies it as `UUID` and
+`[]uuid.UUID` as `UUIDArray`, so a `uuid` column needs no `type=`
+option at all:
+
+```go
+type Customer struct {
+    ID   uuid.UUID `pg:"primary"`          // uuid, DEFAULT gen_random_uuid()
+    Name string    `pg:"type=varchar(255)"`
+}
+```
+
+Everything the [Primary Keys and Generated
+Defaults](#primary-keys-and-generated-defaults) section describes
+applies unchanged: the column's resolved type is `UUID`, so a
+non-nullable `primary` field with no `default=` and no `ref=` still
+picks up `gen_random_uuid()` automatically, and `CreateSchema` still
+emits `CREATE EXTENSION IF NOT EXISTS pgcrypto` for the schema. An
+all-zero `uuid.UUID` counts as a zero value, so the column is left out
+of the `INSERT` and the server-side default fires, exactly as an empty
+`string` does for a `` pg:"type=uuid,primary" `` field (see
+[Chapter 7](07-writing-data.md)).
+
+Three things this deliberately does *not* change:
+
+- **String-typed UUID fields still work.** `` ID string
+  `pg:"type=uuid,primary"` `` behaves exactly as it always has. This
+  is an addition, not a replacement, and there is no reason to migrate
+  an existing struct.
+- **Other `[16]byte`-based UUID types are not detected by shape.**
+  `github.com/google/uuid`, `gofrs/uuid` and hand-rolled equivalents
+  are matched by exact type, so they do not get the automatic
+  classification: a bare `[16]byte` is just as plausibly an MD5
+  digest, which belongs in `bytea`. Give those an explicit
+  `` pg:"type=uuid" ``, which bypasses type inference entirely and has
+  always been the way to use them.
+- **The code generator is unaffected.** `gen` maps a `uuid` column
+  back to `string` (`dataTypeToGoType` is unchanged), so generated
+  structs keep the shape they had; see
+  [Chapter 13](13-introspection-and-code-generation.md).
+
+The ordering matters internally, and is worth knowing if you ever read
+`desc/data_type.go`: the `uuid.UUID` cases sit *before* the
+`fmt.Stringer` fallback. `uuid.UUID` has a `String` method, so without
+them a plain `ID uuid.UUID` field would fall through to `Text` and
+quietly create a `text` column instead of a `uuid` one, which is what
+earlier releases of pg did.
 
 ## Identifier Validation
 
@@ -432,6 +492,11 @@ underscores or dollar signs, for example `users`, `_private`,
 - A `uuid` primary key with no explicit default gets
   `gen_random_uuid()` automatically; `CreateSchema` adds the
   `pgcrypto` extension whenever that (or `password`) applies.
+- A field typed `uuid.UUID` (the Go 1.27 standard library type) maps
+  to a `uuid` column, and `[]uuid.UUID` to `uuid[]`, with no `type=`
+  option needed. String-typed `` pg:"type=uuid" `` fields are
+  unaffected, and other `[16]byte` UUID packages still need the
+  explicit tag.
 - Embedded structs flatten into the parent table (except
   `time.Time` and JSON-tagged fields); `SetDefaultColumnNameMapper`,
   `NoColumnNameMapper` and `JSONColumnNameMapper` control how field
@@ -456,6 +521,9 @@ underscores or dollar signs, for example `users`, `_private`,
   `generated` tag option.
 - [pgcrypto](https://www.postgresql.org/docs/current/pgcrypto.html):
   the extension providing `gen_random_uuid()`.
+- [Go: uuid](https://pkg.go.dev/uuid):
+  the standard library `uuid.UUID` type and its constructors, which pg
+  maps straight onto a `uuid` column.
 - [PostgreSQL: Indexes](https://www.postgresql.org/docs/current/indexes.html):
   the access methods (`btree`, `hash`, `gist`, `spgist`, `gin`,
   `brin`) the `index` tag option chooses between.

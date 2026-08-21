@@ -56,7 +56,7 @@ func setupPaginationScratchTable(ctx context.Context, db *DB) error {
 // "a" except for the very last one, which gets category "b", giving tests a category value
 // ("b") that matches exactly one row and one ("does-not-exist") that matches none.
 func seedPaginationScratchTable(ctx context.Context, db *DB, n int) error {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		category := "a"
 		if i == n-1 {
 			category = "b"

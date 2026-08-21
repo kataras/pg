@@ -86,12 +86,12 @@ still run and still exercise the locking, just without the detector attached.
 
 | Job | What it does |
 | --- | --- |
-| `test` | `postgres:16-alpine` service container (`POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=admin!123`, `POSTGRES_DB=test_db`, health-checked via `pg_isready`), then `go vet ./...` and `go test -race -count=1 ./...` on Go 1.26.x |
-| `lint` | `golangci-lint-action@v6` pinned to `golangci-lint` v1.62.2 (the v1 config schema in `.golangci.yml`), deliberately behind current; see the comment block at the top of `ci.yml` and `.golangci.yml` for why upgrading is a deliberate follow-up, not an oversight |
+| `test` | `postgres:16-alpine` service container (`POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=admin!123`, `POSTGRES_DB=test_db`, health-checked via `pg_isready`), then `go vet ./...` and `go test -race -count=1 ./...` on Go 1.27.x |
+| `lint` | `golangci-lint-action@v9` pinned to `golangci-lint` v2.13 (the v2 config schema in `.golangci.yml`). v2.13 is the floor, not a preference: it is the first release built with Go 1.27, and older builds cannot parse generic methods. See the comment block at the top of `ci.yml` for why the action is pinned to v9 |
 
 `_examples/` and `_benchmarks/` are separate Go modules (their own `go.mod`, pinned older
 dependencies via `replace ../../`) excluded from CI and from `golangci-lint` via
-`issues.exclude-dirs`; do not run `go mod tidy` in them and do not treat their failure to
+`linters.exclusions.paths`; do not run `go mod tidy` in them and do not treat their failure to
 build as something a change here broke.
 
 ## Example* tests

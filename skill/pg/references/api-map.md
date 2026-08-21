@@ -53,6 +53,21 @@ are the matching `desc.` types, `pg.Identifier` = `pgx.Identifier`, `pg.CopyFrom
 | `desc.PasswordHandler` | `struct { Encrypt func(tableName, plainPassword string) (string, error); Decrypt func(tableName, encryptedPassword string) (string, error) }` | Set only `Encrypt` for a one-way (recommended) handler |
 | struct tag options (`pg:"..."`) | `name`, `type` (with `(arg)`, e.g. `varchar(255)`), `primary`/`pk`, `identity`, `default=`, `unique`, `unique_index=`, `conflict=`, `username`, `password`, `nullable`/`null`, `ref=`/`reference=`/`references=` (`table(col [action] [deferrable])`), `index=`, `check=`, `generated=`, `auto`, `presenter`, `unscannable` | Parsed by `desc.convertStructFieldToColumnDefinion`; see `security.md` for which of these are developer-authored SQL |
 
+Only fields with a non-empty `pg` tag become columns (`desc.lookupFields`), so a field needs at
+least a name-only tag such as `pg:"peers"` to be included.
+
+**UUID field types.** A column's type is inferred from the Go type when no `type=` tag is given
+(`desc.goTypeToDataType`). The Go 1.27 standard library `uuid` package is recognized:
+`uuid.UUID` maps to `UUID` and `[]uuid.UUID` to `UUIDArray`, and a non-nullable `uuid.UUID`
+primary key still gets the automatic `DEFAULT gen_random_uuid()`. That case is matched *before*
+the `fmt.Stringer` fallback on purpose: `uuid.UUID` has a `String` method, so it would otherwise
+be classified as `Text` and silently create a text column. Other 16-byte UUID types
+(`github.com/google/uuid`, `gofrs/uuid`, hand-rolled) are deliberately **not** matched by shape,
+because a bare `[16]byte` is equally plausible as an MD5 digest; they keep using an explicit
+`pg:"type=uuid"` tag, which bypasses inference entirely. String-based UUID fields are unchanged.
+`desc.dataTypeToGoType` still maps `UUID` back to `string`, so `gen`'s generated structs are
+unaffected.
+
 ## Read
 
 | Symbol | Signature | Purpose |
@@ -70,15 +85,15 @@ are the matching `desc.` types, `pg.Identifier` = `pgx.Identifier`, `pg.CopyFrom
 | `(*DB).Exists` | `func (db *DB) Exists(ctx context.Context, value any) (bool, error)` | |
 | `(*DB).QueryBoolean` | `func (db *DB) QueryBoolean(ctx context.Context, query string, args ...any) (ok bool, err error)` | Scans a single bool column |
 | `(*DB).Count` | `func (db *DB) Count(ctx context.Context, query string, args ...any) (int64, error)` | `ErrNoRows` swallowed to 0 |
-| `pg.QueryStructs[T]` | `func QueryStructs[T any](ctx context.Context, db *DB, query string, args ...any) ([]T, error)` | `T` need not be registered; falls back to `desc.LooseTable` |
-| `pg.QueryStruct[T]` | `func QueryStruct[T any](ctx context.Context, db *DB, query string, args ...any) (T, error)` | Same, single row |
+| `DB.QueryStructs[T]` | `func (db *DB) QueryStructs[T any](ctx context.Context, query string, args ...any) ([]T, error)` | `T` need not be registered; falls back to `desc.LooseTable` |
+| `DB.QueryStruct[T]` | `func (db *DB) QueryStruct[T any](ctx context.Context, query string, args ...any) (T, error)` | Same, single row |
 | `pg.ScanStructs[T]` | `func ScanStructs[T any](rows Rows) ([]T, error)` | Scans an already-open `Rows` (no `*DB`), always via `LooseTable` |
 | `desc.LooseTable` | `func LooseTable(typ reflect.Type) (*Table, error)` | Cached, schema-independent descriptor for an ad-hoc struct; every column `Nullable`, no `pg` tag required |
-| `pg.QuerySlice[T]` | `func QuerySlice[T any](ctx context.Context, db *DB, query string, args ...any) ([]T, error)` | Single-column scan into `T`; empty strings are dropped when `T` is `string` |
-| `pg.QueryTwoSlices[T, V]` | `func QueryTwoSlices[T, V any](ctx context.Context, db *DB, query string, args ...any) ([]T, []V, error)` | Two-column scan into two parallel slices |
-| `pg.QueryMap[K, V]` | `func QueryMap[K comparable, V any](ctx context.Context, db *DB, query string, args ...any) (map[K]V, error)` | Two-column scan into a map; later duplicate keys win |
-| `pg.QuerySingle[T]` | `func QuerySingle[T any](ctx context.Context, db *DB, query string, args ...any) (entry T, err error)` | Single value, single row |
-| `pg.QueryFunc[T]` / `pg.ScanFunc[T]` | `func QueryFunc[T any](ctx context.Context, db *DB, scan ScanFunc[T], query string, args ...any) ([]T, error)`; `type ScanFunc[T any] func(rows Rows) (T, error)` | Ad-hoc row shape that fits neither a scalar nor a registered struct |
+| `DB.QuerySlice[T]` | `func (db *DB) QuerySlice[T any](ctx context.Context, query string, args ...any) ([]T, error)` | Single-column scan into `T`; empty strings are dropped when `T` is `string` |
+| `DB.QueryTwoSlices[T, V]` | `func (db *DB) QueryTwoSlices[T, V any](ctx context.Context, query string, args ...any) ([]T, []V, error)` | Two-column scan into two parallel slices |
+| `DB.QueryMap[K, V]` | `func (db *DB) QueryMap[K comparable, V any](ctx context.Context, query string, args ...any) (map[K]V, error)` | Two-column scan into a map; later duplicate keys win |
+| `DB.QuerySingle[T]` | `func (db *DB) QuerySingle[T any](ctx context.Context, query string, args ...any) (entry T, err error)` | Single value, single row |
+| `DB.QueryFunc[T]` / `pg.ScanFunc[T]` | `func (db *DB) QueryFunc[T any](ctx context.Context, scan ScanFunc[T], query string, args ...any) ([]T, error)`; `type ScanFunc[T any] func(rows Rows) (T, error)` | Ad-hoc row shape that fits neither a scalar nor a registered struct |
 
 ## Filter / sort / paginate
 
@@ -116,7 +131,7 @@ are the matching `desc.` types, `pg.Identifier` = `pgx.Identifier`, `pg.CopyFrom
 | `(*Repository[T]).InsertOnConflict` | `func (repo *Repository[T]) InsertOnConflict(ctx context.Context, oc OnConflict, values ...T) error` | Explicit `OnConflict`, batched, never RETURNING |
 | `(*Repository[T]).InsertSingleOnConflict` | `func (repo *Repository[T]) InsertSingleOnConflict(ctx context.Context, oc OnConflict, value T, idPtr any) error` | `idPtr` non-nil always adds RETURNING; a skipped DO NOTHING row surfaces as `ErrNoRows` |
 | `pg.OnConflict` | `struct { Columns []string; Constraint string; DoNothing bool; SetColumns []string; SetWhere string }` | `SetWhere` is developer-authored SQL, appended verbatim |
-| `pg.UpdateOrInsert[R]` | `func UpdateOrInsert[R any](ctx context.Context, db *DB, updateQuery, insertQuery string, args []any, insertExtraArgs ...any) (R, error)` | Check-then-act: try `updateQuery` first, `insertQuery` (with `args` + `insertExtraArgs`) on `ErrNoRows`; both must `RETURNING` a single `R` |
+| `DB.UpdateOrInsert[R]` | `func (db *DB) UpdateOrInsert[R any](ctx context.Context, updateQuery, insertQuery string, args []any, insertExtraArgs ...any) (R, error)` | Check-then-act: try `updateQuery` first, `insertQuery` (with `args` + `insertExtraArgs`) on `ErrNoRows`; both must `RETURNING` a single `R` |
 | `(*Repository[T]).Update` | `func (repo *Repository[T]) Update(ctx context.Context, values ...T) (int64, error)` | Full update by primary key |
 | `(*Repository[T]).UpdateExceptColumns` | `func (repo *Repository[T]) UpdateExceptColumns(ctx context.Context, columnsToExcept []string, values ...T) (int64, error)` | |
 | `(*Repository[T]).UpdateOnlyColumns` | `func (repo *Repository[T]) UpdateOnlyColumns(ctx context.Context, columnsToUpdate []string, values ...T) (int64, error)` | `nil` means full update |
@@ -156,7 +171,7 @@ are the matching `desc.` types, `pg.Identifier` = `pgx.Identifier`, `pg.CopyFrom
 | Symbol | Signature | Purpose |
 | --- | --- | --- |
 | `(*Repository[T]).SelectIter` | `func (repo *Repository[T]) SelectIter(ctx context.Context, query string, args ...any) iter.Seq2[T, error]` | Lazy, single-use row-at-a-time iterator; holds a connection until drained or broken out of |
-| `pg.QueryIter[T]` | `func QueryIter[T any](ctx context.Context, db *DB, query string, args ...any) iter.Seq2[T, error]` | Single-column streaming analog of `QuerySlice`; does NOT drop empty strings the way `QuerySlice` does |
+| `DB.QueryIter[T]` | `func (db *DB) QueryIter[T any](ctx context.Context, query string, args ...any) iter.Seq2[T, error]` | Single-column streaming analog of `QuerySlice`; does NOT drop empty strings the way `QuerySlice` does |
 
 ## Transact
 
@@ -168,7 +183,7 @@ are the matching `desc.` types, `pg.Identifier` = `pgx.Identifier`, `pg.CopyFrom
 | `(*DB).IsTransaction` | `func (db *DB) IsTransaction() bool` | |
 | `(*DB).InTransaction` | `func (db *DB) InTransaction(ctx context.Context, fn func(*DB) error) (err error)` | `nil` commits; `ErrIntentionalRollback` rolls back and returns `nil`; other error rolls back and returns it (joined with a rollback error if that also fails); panic rolls back and re-panics. Short-circuits (no nesting) when `db` is already transactional |
 | `(*Repository[T]).InTransaction` | `func (repo *Repository[T]) InTransaction(ctx context.Context, fn func(*Repository[T]) error) error` | Same, rebuilds a `*Repository[T]` around the transactional `*DB` |
-| `pg.InTransaction[R]` | `func InTransaction[R any](ctx context.Context, db *DB, wrap func(*DB) R, fn func(R) error) error` | Generic helper for a hand-written repository wrapper type `R` |
+| `DB.InTransactionWrap[R]` | `func (db *DB) InTransactionWrap[R any](ctx context.Context, wrap func(*DB) R, fn func(R) error) error` | Generic helper for a hand-written repository wrapper type `R`. Named `InTransactionWrap` because `DB.InTransaction` already exists |
 | `pg.ErrIntentionalRollback` | `var ErrIntentionalRollback error` | Sentinel `fn` returns to roll back without surfacing an error |
 | `pg.RetryOptions` | `struct { MaxAttempts int; BaseDelay, MaxDelay time.Duration; TxOptions pgx.TxOptions; IsRetryable func(error) bool }` | Zero value: 3 attempts, 50ms/1s backoff, `IsErrRetryableTx` |
 | `(*DB).InTransactionRetry` | `func (db *DB) InTransactionRetry(ctx context.Context, opts RetryOptions, fn func(*DB) error) error` | Full-jitter exponential backoff; each attempt is a brand new transaction; runs once with no retry if already transactional |

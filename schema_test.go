@@ -24,7 +24,7 @@ func TestSchemaConcurrent(t *testing.T) {
 	values := make([]any, n)
 	tableNames := make([]string, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		// Build N structurally distinct struct types at runtime so that
 		// Register genuinely inserts N independent entries rather than
 		// racing multiple goroutines on the same map key.
@@ -44,7 +44,7 @@ func TestSchemaConcurrent(t *testing.T) {
 	stop := make(chan struct{})
 
 	var readersWG sync.WaitGroup
-	for i := 0; i < n; i++ {
+	for i := range n {
 		readersWG.Add(1)
 		go func(i int) {
 			defer readersWG.Done()
@@ -71,7 +71,7 @@ func TestSchemaConcurrent(t *testing.T) {
 		errs      []error
 	)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		writersWG.Add(1)
 		go func(i int) {
 			defer writersWG.Done()
@@ -96,7 +96,7 @@ func TestSchemaConcurrent(t *testing.T) {
 		t.Fatalf("expected %d registered tables, got %d", n, got)
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		td, err := schema.GetByTableName(tableNames[i])
 		if err != nil {
 			t.Fatalf("GetByTableName(%s): unexpected error: %v", tableNames[i], err)

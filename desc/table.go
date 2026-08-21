@@ -89,13 +89,7 @@ func (td *Table) IsType(typesToCheck ...TableType) bool {
 		return true
 	}
 
-	for _, t := range typesToCheck {
-		if td.Type == t {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(typesToCheck, td.Type)
 }
 
 // IsReadOnly returns true if the table is a simple view or materialized view.

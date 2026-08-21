@@ -173,8 +173,8 @@ func convertStructFieldToColumnDefinion(tableName string, field reflect.StructFi
 
 	fieldTag := field.Tag.Get(DefaultTag)
 
-	options := strings.Split(fieldTag, ",")
-	for _, opt := range options {
+	options := strings.SplitSeq(fieldTag, ",")
+	for opt := range options {
 		if opt == "" {
 			continue // skip empty, e.g name,
 		}

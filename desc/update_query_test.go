@@ -22,7 +22,7 @@ type passwordAlgUpdateAccount struct {
 // insert_query.go), alongside BuildInsertQuery and BuildBulkInsertQuery. It must validate
 // PasswordAlg before building SQL too, instead of interpolating an attacker-controlled value.
 func TestBuildUpdateQueryRejectsInvalidPasswordAlg(t *testing.T) {
-	td, err := ConvertStructToTable("password_alg_update_accounts", reflect.TypeOf(passwordAlgUpdateAccount{}))
+	td, err := ConvertStructToTable("password_alg_update_accounts", reflect.TypeFor[passwordAlgUpdateAccount]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}

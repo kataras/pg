@@ -44,7 +44,6 @@ func TestPrepareListenTableValidation(t *testing.T) {
 	db := newUnreachableTestDB(t)
 
 	for _, v := range invalid {
-		v := v
 
 		t.Run("channel/"+v, func(t *testing.T) {
 			err := db.PrepareListenTable(context.Background(), &ListenTableOptions{

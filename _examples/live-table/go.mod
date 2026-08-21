@@ -1,6 +1,6 @@
 module github.com/kataras/pg_examples/live-table-reload
 
-go 1.26
+go 1.27
 
 replace github.com/kataras/pg => ../../
 

@@ -368,8 +368,8 @@ entirely, total is reported as `-1`, and the page query still runs.
 query as extra bind parameters (never interpolated), numbered to
 continue correctly after whatever positional parameters `query` already
 uses. Row scanning for the page query is identical to
-`Repository[T].Select`: rows convert to `[]T` via `desc.RowsToStruct`
-against the repository's own table descriptor.
+`Repository[T].Select`: rows convert to `[]T` via `RowsToStruct[T]`
+on the repository's own table descriptor.
 
 ```go
 orderBy, err := repo.OrderBy("created_at", true)
@@ -403,8 +403,8 @@ query := `
 items, total, err := repo.SelectWithTotal(ctx, query)
 ```
 
-Internally this calls `desc.RowsToStructWithTotal[T](repo.Table(),
-rows, "total_count")`, which scans every other column into `T` exactly
+Internally this calls `repo.Table().RowsToStructWithTotal[T](rows,
+"total_count")`, which scans every other column into `T` exactly
 as `RowsToStruct` does and additionally captures the named window
 column out of band, into the returned `int64`, so `T` needs no
 artificial field for it. `total_count` is matched case-insensitively
@@ -444,8 +444,8 @@ nil)` from both methods.
   short-circuits without running the page query.
 - `SelectWithTotal` is for a query that already carries its own
   `COUNT(*) OVER() AS total_count` window column and its own
-  ordering; it captures the total out of band via
-  `desc.RowsToStructWithTotal`.
+  ordering; it captures the total out of band via the table
+  descriptor's `RowsToStructWithTotal[T]` method.
 
 ## Further Reading
 

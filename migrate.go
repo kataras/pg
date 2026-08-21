@@ -128,7 +128,7 @@ func (db *DB) Migrate(ctx context.Context, fsys fs.FS, opts *MigrateOptions) (ap
 			return fmt.Errorf("migrate: create tracking table: %w", err)
 		}
 
-		alreadyApplied, err := QuerySlice[string](ctx, db, "SELECT version FROM "+quotedTable)
+		alreadyApplied, err := db.QuerySlice[string](ctx, "SELECT version FROM "+quotedTable)
 		if err != nil {
 			return fmt.Errorf("migrate: read tracking table: %w", err)
 		}

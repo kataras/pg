@@ -74,7 +74,7 @@ func mustLooseColumn(t *testing.T, td *Table, colName string) *Column {
 // pointer and non-pointer), the time.Time/[]byte/sql.Scanner/pgtype exclusions from JSON-wrap,
 // and the table-level shape (non-strict, TableTypePresenter) LooseTable documents.
 func TestLooseTableFields(t *testing.T) {
-	td, err := LooseTable(reflect.TypeOf(looseAllFields{}))
+	td, err := LooseTable(reflect.TypeFor[looseAllFields]())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestLooseTableFields(t *testing.T) {
 // it and fall through to the default Addr().Interface() scan target instead, relying on pgx's
 // built-in generic JSON decode for a pointer-to-pointer destination, as documented on LooseTable.
 func TestLooseTableStructPtrIsPtr(t *testing.T) {
-	td, err := LooseTable(reflect.TypeOf(looseAllFields{}))
+	td, err := LooseTable(reflect.TypeFor[looseAllFields]())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestLooseTableStructPtrIsPtr(t *testing.T) {
 // (here via a pointer receiver, so only *customLooseScanner satisfies the interface directly) is
 // recorded as such and therefore excluded from JSON-wrap even though its kind is struct.
 func TestLooseTableScannerFieldIsMarkedScanner(t *testing.T) {
-	td, err := LooseTable(reflect.TypeOf(looseAllFields{}))
+	td, err := LooseTable(reflect.TypeFor[looseAllFields]())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestLooseTableScannerFieldIsMarkedScanner(t *testing.T) {
 // TestLooseTableCachesPerType verifies LooseTable returns the exact same *Table instance for
 // repeated calls with the same type, and that a pointer type shares its pointee's cache entry.
 func TestLooseTableCachesPerType(t *testing.T) {
-	typ := reflect.TypeOf(looseChild{})
+	typ := reflect.TypeFor[looseChild]()
 
 	first, err := LooseTable(typ)
 	if err != nil {
@@ -225,7 +225,7 @@ func TestLooseTableCachesPerType(t *testing.T) {
 		t.Fatal("expected LooseTable to return the same cached *Table instance for the same type")
 	}
 
-	third, err := LooseTable(reflect.TypeOf(&looseChild{}))
+	third, err := LooseTable(reflect.TypeFor[*looseChild]())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -246,10 +246,10 @@ func TestIsLooseJSONFieldExcludesPgtypeTypes(t *testing.T) {
 		typ  reflect.Type
 		want bool
 	}{
-		{"pgtype.Range[int32]", reflect.TypeOf(pgtype.Range[int32]{}), false},
-		{"pgtype.Array[string]", reflect.TypeOf(pgtype.Array[string]{}), false},
-		{"*pgtype.Range[int32] (pointer)", reflect.TypeOf(&pgtype.Range[int32]{}), false},
-		{"plain struct (control)", reflect.TypeOf(looseChild{}), true},
+		{"pgtype.Range[int32]", reflect.TypeFor[pgtype.Range[int32]](), false},
+		{"pgtype.Array[string]", reflect.TypeFor[pgtype.Array[string]](), false},
+		{"*pgtype.Range[int32] (pointer)", reflect.TypeFor[*pgtype.Range[int32]](), false},
+		{"plain struct (control)", reflect.TypeFor[looseChild](), true},
 	}
 
 	for _, tc := range cases {
@@ -265,10 +265,10 @@ func TestIsLooseJSONFieldExcludesPgtypeTypes(t *testing.T) {
 // dereferencing a pointer).
 func TestLooseTableNonStructError(t *testing.T) {
 	for _, typ := range []reflect.Type{
-		reflect.TypeOf(42),
-		reflect.TypeOf("a string"),
-		reflect.TypeOf([]int{}),
-		reflect.TypeOf(map[string]int{}),
+		reflect.TypeFor[int](),
+		reflect.TypeFor[string](),
+		reflect.TypeFor[[]int](),
+		reflect.TypeFor[map[string]int](),
 	} {
 		t.Run(typ.String(), func(t *testing.T) {
 			if _, err := LooseTable(typ); err == nil {

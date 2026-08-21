@@ -127,8 +127,7 @@ func TestUpdateJSONBUnknownColumn(t *testing.T) {
 		t.Fatalf("expected the error to name the table and column, got: %v", err)
 	}
 
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
+	if _, ok := errors.AsType[*pgconn.PgError](err); ok {
 		t.Fatalf("expected a validation error with no SQL executed, got a database error: %v", err)
 	}
 }

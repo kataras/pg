@@ -47,7 +47,7 @@ Code examples use the full import path (`github.com/kataras/pg`) and are
 complete enough to adapt directly into a real program; where an example
 belongs to a larger program, the chapter says so. Shell commands are
 written for a POSIX shell and work in PowerShell unless noted. The
-examples target Go 1.26, the version pg's own go.mod requires, and are
+examples target Go 1.27, the version pg's own go.mod requires, and are
 written against the library as published in this book's edition; every
 identifier in every listing was checked against the source before the
 chapter shipped.

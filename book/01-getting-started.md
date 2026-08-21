@@ -7,7 +7,7 @@ describe a table once, as a Go struct carrying `pg:"..."` field tags,
 and the library generates the SQL needed to create that table, verify
 it against a live database, and read and write rows through a generic
 `Repository[T]`. The module path is `github.com/kataras/pg` and it
-requires Go 1.26 or newer. This chapter installs the module, builds a
+requires Go 1.27 or newer. This chapter installs the module, builds a
 first program end to end (a struct, a schema, a connection, an insert
 and a read), and names the pieces you will meet again in every later
 chapter. Every symbol and example in this chapter is checked against
@@ -67,7 +67,7 @@ fields by name when scanning, and to build `INSERT`, `UPDATE` and
 
 ## Installation
 
-You need [Go 1.26+](https://go.dev/dl/). Create a module and add pg to
+You need [Go 1.27+](https://go.dev/dl/). Create a module and add pg to
 it:
 
 ```sh

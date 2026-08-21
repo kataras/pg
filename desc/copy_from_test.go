@@ -28,7 +28,7 @@ type copyPlanRow struct {
 func copyPlanRowTable(t *testing.T) *Table {
 	t.Helper()
 
-	td, err := ConvertStructToTable("copy_plan_rows", reflect.TypeOf(copyPlanRow{}))
+	td, err := ConvertStructToTable("copy_plan_rows", reflect.TypeFor[copyPlanRow]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}
@@ -134,7 +134,7 @@ type copyPlanAllDefaultRow struct {
 // one of a table's insertable columns carries a Default and is zero across the whole batch, so
 // the step-3 pre-pass omits all of them.
 func TestBuildCopyPlanAllColumnsOmittedErrors(t *testing.T) {
-	td, err := ConvertStructToTable("copy_plan_all_default_rows", reflect.TypeOf(copyPlanAllDefaultRow{}))
+	td, err := ConvertStructToTable("copy_plan_all_default_rows", reflect.TypeFor[copyPlanAllDefaultRow]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}
@@ -165,7 +165,7 @@ type copyPlanPasswordRow struct {
 // plan that would silently stream the plaintext password to PostgreSQL, for a table whose
 // password column has no Go-side PasswordHandler installed.
 func TestBuildCopyPlanDBSidePasswordRejected(t *testing.T) {
-	td, err := ConvertStructToTable("copy_plan_password_rows", reflect.TypeOf(copyPlanPasswordRow{}))
+	td, err := ConvertStructToTable("copy_plan_password_rows", reflect.TypeFor[copyPlanPasswordRow]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestCopyPlanRowOrderMatchesColumnNames(t *testing.T) {
 // value, never the plaintext, as that row's password value) and that an empty password still
 // errors out of Row, matching the single-/multi-row INSERT paths' own validation.
 func TestCopyPlanRowGoSideHandlerEncrypts(t *testing.T) {
-	td, err := ConvertStructToTable("copy_plan_handler_password_rows", reflect.TypeOf(copyPlanPasswordRow{}))
+	td, err := ConvertStructToTable("copy_plan_handler_password_rows", reflect.TypeFor[copyPlanPasswordRow]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}

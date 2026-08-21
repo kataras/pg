@@ -51,7 +51,7 @@ func TestExpressionsFilterTableMalformedExpression(t *testing.T) {
 	}
 
 	badInput := "this is not a valid filter expression"
-	expressions := Expressions{NewExpression(badInput, reflect.TypeOf(0))}
+	expressions := Expressions{NewExpression(badInput, reflect.TypeFor[int]())}
 
 	defer func() {
 		r := recover()
@@ -80,7 +80,7 @@ func TestExpressionsFilterTableMalformedExpression(t *testing.T) {
 // unchecked type assertion this used to be (`Data.(reflect.Type)` without comma-ok) panics on a
 // nil interface; verify it now just skips the FieldType override instead of panicking.
 func TestExpressionsFilterTableNilResultFieldType(t *testing.T) {
-	originalFieldType := reflect.TypeOf(int(0))
+	originalFieldType := reflect.TypeFor[int]()
 	td := &Table{
 		Name: "users",
 		Columns: []*Column{

@@ -83,7 +83,7 @@ func setupIterScratchTable(ctx context.Context, db *DB) error {
 // i and a non-empty "tag-<i>" for odd i, giving TestQueryIterIncludesEmptyStrings both empty
 // and non-empty values to tell QueryIter's behavior apart from QuerySlice's.
 func seedIterScratchTable(ctx context.Context, db *DB, n int) error {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		tag := ""
 		if i%2 == 1 {
 			tag = fmt.Sprintf("tag-%d", i)
@@ -257,7 +257,7 @@ func TestQueryIterIncludesEmptyStrings(t *testing.T) {
 
 	query := fmt.Sprintf("SELECT tag FROM %s ORDER BY id", iterScratchTable)
 
-	viaSlice, err := QuerySlice[string](ctx, db, query)
+	viaSlice, err := db.QuerySlice[string](ctx, query)
 	if err != nil {
 		t.Fatalf("QuerySlice: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestQueryIterIncludesEmptyStrings(t *testing.T) {
 	}
 
 	var viaIter []string
-	for tag, err := range QueryIter[string](ctx, db, query) {
+	for tag, err := range db.QueryIter[string](ctx, query) {
 		if err != nil {
 			t.Fatalf("QueryIter: %v", err)
 		}

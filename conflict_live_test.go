@@ -175,7 +175,7 @@ func TestUpdateOrInsert(t *testing.T) {
 	args := []any{"k1", "v1"}
 
 	// Insert-fallback path: no row matches (a,b) yet.
-	insertedID, err := UpdateOrInsert[int64](ctx, db, updateQuery, insertQuery, args, "fresh")
+	insertedID, err := db.UpdateOrInsert[int64](ctx, updateQuery, insertQuery, args, "fresh")
 	if err != nil {
 		t.Fatalf("UpdateOrInsert (insert-fallback path): %v", err)
 	}
@@ -194,7 +194,7 @@ func TestUpdateOrInsert(t *testing.T) {
 
 	// Update-hit path: the row now exists, so the UPDATE should match and return the same id -
 	// insertExtraArgs ("ignored") must not be used this time.
-	updatedID, err := UpdateOrInsert[int64](ctx, db, updateQuery, insertQuery, args, "ignored")
+	updatedID, err := db.UpdateOrInsert[int64](ctx, updateQuery, insertQuery, args, "ignored")
 	if err != nil {
 		t.Fatalf("UpdateOrInsert (update-hit path): %v", err)
 	}

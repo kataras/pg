@@ -2,7 +2,7 @@ package pg
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"reflect"
@@ -33,6 +33,15 @@ func NewRepository[T any](db *DB) *Repository[T] {
 		db: db, // assign the db parameter to the db field
 		td: td,
 	}
+}
+
+// NewRepository creates and returns a new Repository instance for a given type T, bound to db.
+// It panics if T was not registered to the schema.
+//
+// It is the method form of the NewRepository function, for call sites that read better with the
+// database first: db.NewRepository[Customer]() instead of pg.NewRepository[Customer](db).
+func (db *DB) NewRepository[T any]() *Repository[T] {
+	return NewRepository[T](db)
 }
 
 // ==== //
@@ -139,7 +148,7 @@ func (repo *Repository[T]) Select(ctx context.Context, query string, args ...any
 		return nil, err // return nil and the error if the query fails
 	}
 
-	list, err := desc.RowsToStruct[T](repo.td, rows) // convert the rows returned by the query to a slice of values of type T using rowsToStruct
+	list, err := repo.td.RowsToStruct[T](rows) // convert the rows returned by the query to a slice of values of type T using RowsToStruct
 	if err != nil {
 		return nil, err // return nil and the error if the conversion fails
 	}
@@ -156,8 +165,8 @@ func (repo *Repository[T]) SelectSingle(ctx context.Context, query string, args 
 		return value, err // return the zero value and the error if the query fails
 	}
 
-	value, err = desc.RowToStruct[T](repo.td, rows) // convert the first row returned by the query to a value of type T using rowToStruct
-	return value, err                               // return the value and the error from rowToStruct (nil or not)
+	value, err = repo.td.RowToStruct[T](rows) // convert the first row returned by the query to a value of type T using RowToStruct
+	return value, err                         // return the value and the error from RowToStruct (nil or not)
 }
 
 // SelectByID selects a row from a table by matching the id column with the given argument and returns the row or ErrNoRows.
@@ -495,14 +504,16 @@ func (repo *Repository[T]) ListenTable(ctx context.Context, callback func(TableN
 		}
 
 		if len(tableEvt.Old) > 0 {
-			err := json.Unmarshal(tableEvt.Old, &evt.Old)
+			// jsonDecodeOptions: these are PostgreSQL row values (lower-cased column names)
+			// decoding into T, the caller's entity, which carries pg tags and rarely json ones.
+			err := json.Unmarshal(tableEvt.Old, &evt.Old, jsonDecodeOptions)
 			if err != nil {
 				return callback(evt, fmt.Errorf("table: %s: unmarshal old: %w", tableEvt.Table, err))
 			}
 		}
 
 		if len(tableEvt.New) > 0 {
-			err := json.Unmarshal(tableEvt.New, &evt.New)
+			err := json.Unmarshal(tableEvt.New, &evt.New, jsonDecodeOptions)
 			if err != nil {
 				return callback(evt, fmt.Errorf("table: %s: unmarshal new: %w", tableEvt.Table, err))
 			}

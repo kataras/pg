@@ -103,8 +103,17 @@ func (db *DB) Notify(ctx context.Context, channel string, payload any) error
 `payload` depends on its Go type:
 
 - `string` or `[]byte`: sent as-is, unmodified, as the raw payload.
-- anything else: marshaled with `encoding/json` first, then sent as
+- anything else: marshaled with `encoding/json/v2` first, then sent as
   the JSON text.
+
+One consequence of the move from `encoding/json` to
+`encoding/json/v2` is worth knowing if something other than Go reads
+the channel: v2 does not HTML-escape `<`, `>` and `&`, so a payload
+containing those characters now carries them literally instead of as
+the six-character `\u`-escapes v1 emitted for them. Round-tripping
+through pg is unaffected, since both spellings decode to the same
+string; only a consumer inspecting the raw payload bytes, or diffing
+them against a stored expectation, would notice.
 
 ```go
 err := db.Notify(ctx, "chat_db", "hello") // sent as-is.
@@ -212,7 +221,17 @@ for {
 ```
 
 `UnmarshalNotification` is the counterpart to `Notify`'s JSON-encoding
-branch: it JSON-decodes `n.Payload` into `T` and returns it.
+branch: it JSON-decodes `n.Payload` into `T` and returns it. It stays
+a package-level function rather than becoming a method the way most of
+the library's generic helpers have, because `Notification` is a type
+alias for `pgconn.Notification` and Go does not allow methods on a
+type declared in another package. It decodes with `encoding/json/v2`,
+passing `json.MatchCaseInsensitiveNames(true)` so that a payload
+produced by a row-to-JSON trigger, whose keys are PostgreSQL's
+lower-cased column names, still lands in `T`'s fields when `T` is one
+of your entities carrying `pg` tags rather than `json` ones. v2
+matches names exactly by default; the option restores the behavior v1
+gave you unconditionally.
 
 ```go
 type Message struct {
@@ -399,7 +418,11 @@ for `INSERT` and `UPDATE` and is the zero value of `T` for `DELETE`;
 `DB.ListenTable`'s callback receives directly: `New`/`Old` stay as raw
 `json.RawMessage` since the low-level API has no registered Go type to
 decode them into, leaving that decision to the caller (or, for a
-typed table, to `Repository[T].ListenTable` below).
+typed table, to `Repository[T].ListenTable` below). That is still
+`encoding/json`'s `RawMessage`, not the v2-era
+`jsontext.Value`, so code holding a `TableNotificationJSON` keeps
+compiling unchanged; `encoding/json/v2` handles `RawMessage` as raw
+JSON natively.
 `(TableNotification[T]).GetPayload() string` returns the notification's
 raw, undecoded text, useful for debugging a decode failure.
 

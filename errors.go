@@ -31,8 +31,7 @@ func IsErrNoRows(err error) bool {
 // error text, and it is meant to be reused by other error classification
 // helpers in this package.
 func asPgError(err error) (*pgconn.PgError, bool) {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 		return pgErr, true
 	}
 

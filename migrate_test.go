@@ -76,7 +76,7 @@ func TestMigrateSequential(t *testing.T) {
 			t.Fatalf("data table row count = %d, want 2", count)
 		}
 
-		ledger, err := QuerySlice[string](ctx, db, "SELECT version FROM "+QuoteIdentifier(trackingTable)+" ORDER BY version")
+		ledger, err := db.QuerySlice[string](ctx, "SELECT version FROM "+QuoteIdentifier(trackingTable)+" ORDER BY version")
 		if err != nil {
 			t.Fatalf("read ledger: %v", err)
 		}

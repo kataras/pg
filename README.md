@@ -33,7 +33,7 @@ The book is rebuilt from its own module: `cd book && go run .`. See [book/README
 
 ## 💻 Installation
 
-The only requirement is the [Go Programming Language](https://go.dev/dl/).
+The only requirement is the [Go Programming Language](https://go.dev/dl/), version 1.27 or newer.
 
 ### Create a new project
 
@@ -325,6 +325,24 @@ type Entity struct {
 }
 ```
 
+The Go 1.27 standard library `uuid` package works too, and needs no `type=` tag: a `uuid.UUID`
+field is recognized as a `uuid` column, and a non-nullable one used as the primary key still
+picks up the automatic `DEFAULT gen_random_uuid()`.
+
+```go
+import "uuid"
+
+type Entity struct {
+  ID      uuid.UUID   `pg:"primary"`
+  Related []uuid.UUID `pg:"related"` // uuid[]
+}
+```
+
+A zero `uuid.UUID` is treated as unset, so the column is left out of the `INSERT` and the
+server generates the value. Other 16-byte UUID implementations (`github.com/google/uuid`,
+`gofrs/uuid`, or your own) are not detected automatically, because a bare `[16]byte` is just as
+likely to be an MD5 digest; give those an explicit `pg:"type=uuid"` tag as before.
+
 Timestamp
 
 ```go
@@ -454,7 +472,7 @@ type OrderWithCustomer struct {
   Customer *Customer // populated from a `to_jsonb(c.*) AS customer` projection.
 }
 
-rows, err := pg.QueryStructs[OrderWithCustomer](ctx, db, `
+rows, err := db.QueryStructs[OrderWithCustomer](ctx, `
   SELECT o.id, o.total, to_jsonb(c.*) AS customer
   FROM orders o JOIN customers c ON c.id = o.customer_id`)
 ```
@@ -462,13 +480,13 @@ rows, err := pg.QueryStructs[OrderWithCustomer](ctx, db, `
 ### `QueryMap`, `QueryFunc` and `Count`
 
 ```go
-idsByEmail, err := pg.QueryMap[string, string](ctx, db, "SELECT email, id FROM customers;")
+idsByEmail, err := db.QueryMap[string, string](ctx, "SELECT email, id FROM customers;")
 
 type nameAndCount struct {
   Name  string
   Count int64
 }
-rows, err := pg.QueryFunc(ctx, db, func(rows pg.Rows) (nameAndCount, error) {
+rows, err := db.QueryFunc(ctx, func(rows pg.Rows) (nameAndCount, error) {
   var nc nameAndCount
   err := rows.Scan(&nc.Name, &nc.Count)
   return nc, err
@@ -496,11 +514,13 @@ err = db.SelectSingle(ctx, &customer, "SELECT * FROM customers WHERE id = $1", i
 `colValPairs` is a flat `"col1", v1, "col2", v2, ...` list, ANDed together; `DeleteByID` covers the
 common by-primary-key case.
 
-### Typed transactions (`pg.InTransaction[R]`)
+### Typed transactions (`DB.InTransactionWrap[R]`)
 
-Package-level `InTransaction[R]` removes the boilerplate a hand-written repository wrapper type
-otherwise repeats for every wrapper: open a transaction on the underlying `*DB`, rebuild the
-wrapper around it, then call the caller's function with that rebuilt wrapper.
+`InTransactionWrap[R]` removes the boilerplate a hand-written repository wrapper type otherwise
+repeats for every wrapper: open a transaction on the underlying `*DB`, rebuild the wrapper around
+it, then call the caller's function with that rebuilt wrapper. It is spelled `InTransactionWrap`
+rather than `InTransaction` because `DB.InTransaction`, which takes a plain `func(*pg.DB) error`,
+already occupies that name.
 
 ```go
 type CustomerRepository struct {
@@ -512,7 +532,7 @@ func NewCustomerRepository(db *pg.DB) *CustomerRepository {
 }
 
 func (r *CustomerRepository) InTransaction(ctx context.Context, fn func(*CustomerRepository) error) error {
-  return pg.InTransaction(ctx, r.DB(), NewCustomerRepository, fn)
+  return r.DB().InTransactionWrap(ctx, NewCustomerRepository, fn)
 }
 ```
 
@@ -620,7 +640,7 @@ for customer, err := range repo.SelectIter(ctx, "SELECT * FROM customers WHERE s
 }
 ```
 
-`pg.QueryIter[T]` is the same idea for single-column rows (the streaming analog of `QuerySlice`).
+`db.QueryIter[T]` is the same idea for single-column rows (the streaming analog of `QuerySlice`).
 Breaking out of the loop early closes the underlying rows and releases the connection right away,
 so the caller can immediately issue another query on the same `*DB` with no extra cleanup.
 

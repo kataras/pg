@@ -112,7 +112,7 @@ func TestQueryStructsLooseJoin(t *testing.T) {
 
 	setupScanTestTables(t, db)
 
-	items, err := QueryStructs[adHocItem](context.Background(), db, scanTestJoinQuery)
+	items, err := db.QueryStructs[adHocItem](context.Background(), scanTestJoinQuery)
 	if err != nil {
 		t.Fatalf("QueryStructs: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestQueryStructNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("match", func(t *testing.T) {
-		item, err := QueryStruct[adHocItem](ctx, db, scanTestJoinQuery+" WHERE c.id = $1", 100)
+		item, err := db.QueryStruct[adHocItem](ctx, scanTestJoinQuery+" WHERE c.id = $1", 100)
 		if err != nil {
 			t.Fatalf("QueryStruct: %v", err)
 		}
@@ -145,7 +145,7 @@ func TestQueryStructNotFound(t *testing.T) {
 	})
 
 	t.Run("no match reports ErrNoRows", func(t *testing.T) {
-		_, err := QueryStruct[adHocItem](ctx, db, scanTestJoinQuery+" WHERE c.id = $1", 999)
+		_, err := db.QueryStruct[adHocItem](ctx, scanTestJoinQuery+" WHERE c.id = $1", 999)
 		if !IsErrNoRows(err) {
 			t.Fatalf("expected ErrNoRows, got: %v", err)
 		}
@@ -201,7 +201,7 @@ func TestQueryStructsRegisteredType(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	results, err := QueryStructs[Customer](ctx, db, "SELECT * FROM customers WHERE cognito_user_id = $1", customer.CognitoUserID)
+	results, err := db.QueryStructs[Customer](ctx, "SELECT * FROM customers WHERE cognito_user_id = $1", customer.CognitoUserID)
 	if err != nil {
 		t.Fatalf("QueryStructs: %v", err)
 	}

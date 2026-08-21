@@ -47,13 +47,7 @@ func extractUpdateArguments(value any, columnsToUpdate []string, primaryKey *Col
 			return true
 		}
 
-		for _, onlyColumnName := range columnsToUpdate {
-			if onlyColumnName == fieldName {
-				return true
-			}
-		}
-
-		return false
+		return slices.Contains(columnsToUpdate, fieldName)
 	})
 	if err != nil {
 		return nil, err // return the error if finding arguments fails

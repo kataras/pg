@@ -1,7 +1,8 @@
 package desc
 
 import (
-	"encoding/json"
+	"encoding"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"reflect"
@@ -11,9 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// RowsToStruct takes a schema, a row of data from a database query, and a generic type T
+// RowsToStruct takes a row of data from a database query and a generic type T
 // and returns a slice of values of type T with the fields populated from the row data.
-func RowsToStruct[T any](td *Table, rows pgx.Rows) ([]T, error) {
+func (td *Table) RowsToStruct[T any](rows pgx.Rows) ([]T, error) {
 	defer rows.Close() // close the rows after the function returns
 
 	// var valueT T // declare a variable to hold the result
@@ -64,7 +65,7 @@ func RowsToStruct[T any](td *Table, rows pgx.Rows) ([]T, error) {
 //
 // Zero rows returns (empty, 0, nil): there is nothing to scan a total out of, following
 // RowsToStruct's own zero-row behavior (no error, an empty slice).
-func RowsToStructWithTotal[T any](td *Table, rows pgx.Rows, totalColumn string) ([]T, int64, error) {
+func (td *Table) RowsToStructWithTotal[T any](rows pgx.Rows, totalColumn string) ([]T, int64, error) {
 	defer rows.Close() // close the rows after the function returns
 
 	slice := []T{} // create a slice to hold the result values
@@ -92,9 +93,9 @@ func RowsToStructWithTotal[T any](td *Table, rows pgx.Rows, totalColumn string) 
 	return slice, total, nil
 }
 
-// RowToStruct takes a schema, a single row of data from a database query, and a generic type T
+// RowToStruct takes a single row of data from a database query and a generic type T
 // and returns a value of type T with the fields populated from the row data.
-func RowToStruct[T any](td *Table, rows pgx.Rows) (value T, err error) {
+func (td *Table) RowToStruct[T any](rows pgx.Rows) (value T, err error) {
 	defer rows.Close() // close the rows after the function returns
 
 	// var value T                             // declare a variable to hold the result
@@ -185,8 +186,7 @@ func convertRowsToStruct(td *Table, rows pgx.Rows, valuePtr any, lookup map[stri
 func scanRow(td *Table, rows pgx.Rows, scanTargets []any) error {
 	if err := rows.Scan(scanTargets...); err != nil {
 		// Help developer to find what field was errored:
-		var scanArgErr pgx.ScanArgError
-		if errors.As(err, &scanArgErr) {
+		if scanArgErr, ok := errors.AsType[pgx.ScanArgError](err); ok {
 			// scanArgErr.ColumnIndex is the index of the column in the row data.
 			// NOTE: that ^ index may be invalid if the struct contains different order of the column in database,
 			// the only one option is to use the col's OrdinalPosition (starting from 1, where scanArgErr.ColumnIndex starts from 0)
@@ -348,10 +348,13 @@ type nullableScanner struct { // useful for UUIDs with null values.
 
 // Scan completes the sql driver.Scanner interface.
 //
-// It never panics: if the field can't be set, or the driver value's type is neither assignable
-// nor convertible to the field's type (e.g. the driver unexpectedly returns something other than
-// a string/[]byte for a text/uuid/varchar column), it returns a descriptive error instead of
-// letting reflect.Value.Set panic mid-scan.
+// The driver value is assigned directly when its type allows it, converted when it is
+// convertible, and otherwise handed to scanText, which covers a text-form value destined for a
+// field that parses itself (see scanText).
+//
+// It never panics: if the field can't be set, or the value fits none of those three paths (e.g.
+// the driver unexpectedly returns something other than a string/[]byte for a text/uuid/varchar
+// column), it returns a descriptive error instead of letting reflect.Value.Set panic mid-scan.
 func (t *nullableScanner) Scan(src any) error {
 	if src == nil { // <- IMPORTANT.
 		return nil
@@ -371,7 +374,40 @@ func (t *nullableScanner) Scan(src any) error {
 	case srcType.ConvertibleTo(fieldType):
 		t.fieldPtr.Set(srcValue.Convert(fieldType))
 	default:
-		return fmt.Errorf("scan: column %s: cannot scan value of type %s into field of type %s", t.colName, srcType, fieldType)
+		return t.scanText(src)
+	}
+
+	return nil
+}
+
+// scanText handles a text-form driver value whose target parses itself, which is what a uuid
+// column needs: pgtype.UUIDCodec hands a sql.Scanner the *canonical string form*, and a Go
+// string is neither assignable nor convertible to a [16]byte-based type such as uuid.UUID.
+// Any field whose pointer implements encoding.TextUnmarshaler is served here.
+func (t *nullableScanner) scanText(src any) error {
+	fieldType := t.fieldPtr.Type()
+
+	var text []byte
+	switch v := src.(type) {
+	case string:
+		text = []byte(v)
+	case []byte:
+		text = v
+	default:
+		return fmt.Errorf("scan: column %s: cannot scan value of type %T into field of type %s", t.colName, src, fieldType)
+	}
+
+	if !t.fieldPtr.CanAddr() {
+		return fmt.Errorf("scan: column %s: cannot scan value of type %T into field of type %s: field is not addressable", t.colName, src, fieldType)
+	}
+
+	unmarshaler, ok := t.fieldPtr.Addr().Interface().(encoding.TextUnmarshaler)
+	if !ok {
+		return fmt.Errorf("scan: column %s: cannot scan value of type %T into field of type %s", t.colName, src, fieldType)
+	}
+
+	if err := unmarshaler.UnmarshalText(text); err != nil {
+		return fmt.Errorf("scan: column %s: into field of type %s: %w", t.colName, fieldType, err)
 	}
 
 	return nil
@@ -443,7 +479,12 @@ func (t *jsonScanner) Scan(src any) error {
 		target = t.fieldPtr.Addr().Interface()
 	}
 
-	return json.Unmarshal(data, target)
+	// MatchCaseInsensitiveNames is required, not cosmetic: this scanner decodes
+	// `to_jsonb(x.*)`/`row_to_json(...)` projections, whose keys are PostgreSQL's lower-cased
+	// column names, into Go structs that usually carry no json tags at all. encoding/json/v2
+	// matches names exactly by default, so without this option a `Name` field would silently
+	// stay at its zero value for a "name" key. encoding/json v1 matched case-insensitively.
+	return json.Unmarshal(data, target, json.MatchCaseInsensitiveNames(true))
 }
 
 // Value completes the sql driver.Valuer interface.

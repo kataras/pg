@@ -171,15 +171,15 @@ func mkdir(path string) error {
 func getCallerPackageName() string {
 	pc, _, _, _ := runtime.Caller(2)
 	funcName := runtime.FuncForPC(pc).Name()
-	lastSlash := strings.LastIndexByte(funcName, '/')
-	if lastSlash < 0 {
-		lastSlash = 0
-	}
+	lastSlash := max(strings.LastIndexByte(funcName, '/'), 0)
 
-	lastDot := strings.LastIndexByte(funcName[lastSlash:], '.')
-	if lastDot == -1 {
+	// funcName is a fully qualified symbol such as "github.com/kataras/pg/gen.Generate".
+	// Cut at the last dot *after* the final slash, so a dot inside the module path
+	// (e.g. "gopkg.in/yaml.v3/pkg.Fn") is not mistaken for the package/function separator.
+	pkgTail, _, found := strings.CutLast(funcName[lastSlash:], ".")
+	if !found {
 		return ""
 	}
 
-	return funcName[:lastDot]
+	return funcName[:lastSlash] + pkgTail
 }

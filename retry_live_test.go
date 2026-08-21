@@ -103,7 +103,7 @@ func TestInTransactionRetrySerializationRace(t *testing.T) {
 	}
 	defer dropTestTables(ctx, db, retryScratchTable)
 
-	var retryableObservations int32
+	var retryableObservations atomic.Int32
 
 	opts := RetryOptions{
 		MaxAttempts: 8,
@@ -112,7 +112,7 @@ func TestInTransactionRetrySerializationRace(t *testing.T) {
 		TxOptions:   pgx.TxOptions{IsoLevel: pgx.Serializable},
 		IsRetryable: func(err error) bool {
 			if IsErrRetryableTx(err) {
-				atomic.AddInt32(&retryableObservations, 1)
+				retryableObservations.Add(1)
 				return true
 			}
 			return false
@@ -163,7 +163,7 @@ func TestInTransactionRetrySerializationRace(t *testing.T) {
 		}
 	}
 
-	if atomic.LoadInt32(&retryableObservations) < 1 {
+	if retryableObservations.Load() < 1 {
 		t.Fatal("expected at least one attempt to fail with a retryable SQLSTATE (40001/40P01) and actually be retried, " +
 			"but IsRetryable was never invoked with a retryable error - the barrier failed to force a genuine conflict")
 	}

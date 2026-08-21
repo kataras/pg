@@ -9,7 +9,7 @@ package pg
 //
 //	db.Exec(ctx, "UPDATE customers SET nickname = $1 WHERE id = $2", Ptr("bob"), id)
 func Ptr[T any](v T) *T {
-	return &v
+	return new(v)
 }
 
 // NullIfZero returns nil when v is the zero value of T, otherwise a pointer to v.

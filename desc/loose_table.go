@@ -192,7 +192,7 @@ func loosePgTagName(tag string) string {
 		return ""
 	}
 
-	for _, opt := range strings.Split(tag, ",") {
+	for opt := range strings.SplitSeq(tag, ",") {
 		key, value, found := strings.Cut(opt, "=")
 		if found && key == "name" {
 			return value

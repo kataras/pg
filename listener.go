@@ -2,7 +2,7 @@ package pg
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"sync"
 	"sync/atomic"
@@ -162,11 +162,22 @@ func notifyNative[T string | []byte](ctx context.Context, db *DB, channel string
 	return err
 }
 
+// jsonDecodeOptions keeps encoding/json v1's case-insensitive field matching for JSON that
+// PostgreSQL - or a hand-written pg_notify payload - produced. Row JSON uses lower-cased column
+// names, while the Go structs it decodes into are the caller's entities, which carry pg tags
+// rather than json ones. encoding/json/v2 matches names exactly by default, which would leave
+// those fields silently at their zero values instead of erroring.
+//
+// It is deliberately applied only where the destination is a caller-supplied type. Payloads
+// decoded into this package's own structs (TableNotification, which tags every field
+// explicitly) keep v2's exact matching.
+var jsonDecodeOptions = json.MatchCaseInsensitiveNames(true)
+
 // UnmarshalNotification returns the notification payload as a custom type of T.
 func UnmarshalNotification[T any](n *Notification) (T, error) {
 	var payload T
 
-	err := json.Unmarshal([]byte(n.Payload), &payload)
+	err := json.Unmarshal([]byte(n.Payload), &payload, jsonDecodeOptions)
 	if err != nil {
 		return payload, err
 	}

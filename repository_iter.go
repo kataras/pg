@@ -90,7 +90,7 @@ import (
 //				return err
 //			}
 //
-//			batch, err := desc.RowsToStruct[BigRow](tx.Table(), rows) // closes rows itself.
+//			batch, err := tx.Table().RowsToStruct[BigRow](rows) // closes rows itself.
 //			if err != nil {
 //				return err
 //			}
@@ -144,7 +144,7 @@ func (repo *Repository[T]) SelectIter(ctx context.Context, query string, args ..
 // SelectIter/Select yield every row regardless of column content, so switching an existing
 // QuerySlice[string] call over to QueryIter[string] can change what the caller observes if it
 // was (even unknowingly) relying on that quirk to filter out empty values.
-func QueryIter[T any](ctx context.Context, db *DB, query string, args ...any) iter.Seq2[T, error] {
+func (db *DB) QueryIter[T any](ctx context.Context, query string, args ...any) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		var zero T
 

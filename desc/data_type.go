@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
+	"uuid"
 )
 
 // RegisterDataType registers a new data type with the given names.
@@ -180,10 +182,8 @@ func (t DataType) IsString(s string) bool {
 	}
 
 	if names, ok := dataTypeText[t]; ok {
-		for _, name := range names {
-			if s == name {
-				return true
-			}
+		if slices.Contains(names, s) {
+			return true
 		}
 	}
 
@@ -241,10 +241,8 @@ func ParseDataType(s string) (DataType, string) {
 	// }
 
 	for t, names := range dataTypeText {
-		for _, name := range names {
-			if s == name {
-				return t, typeArgument
-			}
+		if slices.Contains(names, s) {
+			return t, typeArgument
 		}
 	}
 
@@ -252,27 +250,29 @@ func ParseDataType(s string) (DataType, string) {
 }
 
 var (
-	stringType            = reflect.TypeOf("")
-	bytesType             = reflect.TypeOf([]byte{})
-	intType               = reflect.TypeOf(int(0))
-	int32Type             = reflect.TypeOf(int32(0))
-	int64Type             = reflect.TypeOf(int64(0))
-	uint16Type            = reflect.TypeOf(uint16(0))
-	uint32Type            = reflect.TypeOf(uint32(0))
-	uint64Type            = reflect.TypeOf(uint64(0))
-	float32Type           = reflect.TypeOf(float32(0))
-	float64Type           = reflect.TypeOf(float64(0))
-	timeType              = reflect.TypeOf(time.Time{})
-	ipTyp                 = reflect.TypeOf(net.IP{})
-	jsonNumberTyp         = reflect.TypeOf(json.Number(""))
-	stringerTyp           = reflect.TypeOf((*fmt.Stringer)(nil)).Elem()
-	arrayIntegerTyp       = reflect.TypeOf([]int{})
-	arrayStringTyp        = reflect.TypeOf([]string{})
-	doubleArrayIntegerTyp = reflect.TypeOf([][]int{})
-	doubleArrayStringTyp  = reflect.TypeOf([][]string{})
-	booleanTyp            = reflect.TypeOf(false)
-	timeDurationTyp       = reflect.TypeOf(time.Duration(0))
-	timeDurationArrayTyp  = reflect.TypeOf([]time.Duration{})
+	stringType            = reflect.TypeFor[string]()
+	bytesType             = reflect.TypeFor[[]byte]()
+	intType               = reflect.TypeFor[int]()
+	int32Type             = reflect.TypeFor[int32]()
+	int64Type             = reflect.TypeFor[int64]()
+	uint16Type            = reflect.TypeFor[uint16]()
+	uint32Type            = reflect.TypeFor[uint32]()
+	uint64Type            = reflect.TypeFor[uint64]()
+	float32Type           = reflect.TypeFor[float32]()
+	float64Type           = reflect.TypeFor[float64]()
+	timeType              = reflect.TypeFor[time.Time]()
+	ipTyp                 = reflect.TypeFor[net.IP]()
+	jsonNumberTyp         = reflect.TypeFor[json.Number]()
+	stringerTyp           = reflect.TypeFor[fmt.Stringer]()
+	arrayIntegerTyp       = reflect.TypeFor[[]int]()
+	arrayStringTyp        = reflect.TypeFor[[]string]()
+	doubleArrayIntegerTyp = reflect.TypeFor[[][]int]()
+	doubleArrayStringTyp  = reflect.TypeFor[[][]string]()
+	booleanTyp            = reflect.TypeFor[bool]()
+	timeDurationTyp       = reflect.TypeFor[time.Duration]()
+	timeDurationArrayTyp  = reflect.TypeFor[[]time.Duration]()
+	uuidTyp               = reflect.TypeFor[uuid.UUID]()
+	uuidArrayTyp          = reflect.TypeFor[[]uuid.UUID]()
 )
 
 // goTypeToDataType takes a reflect.Type that represents a Go type
@@ -305,7 +305,19 @@ func goTypeToDataType(typ reflect.Type) DataType {
 		return Interval
 	case timeDurationArrayTyp:
 		return BigIntArray
+	case uuidTyp:
+		return UUID
+	case uuidArrayTyp:
+		return UUIDArray
 	default:
+		// The uuid cases above must be matched before this fmt.Stringer fallback: uuid.UUID has
+		// a String method, so without them a plain `ID uuid.UUID` field would be classified as
+		// Text and silently create a text column instead of a uuid one.
+		//
+		// Other [16]byte-based UUID implementations (github.com/google/uuid, gofrs/uuid, or a
+		// hand-rolled type) are not detected by shape on purpose: a bare [16]byte is equally
+		// plausible as an MD5 digest, which belongs in bytea. Those types keep using an
+		// explicit `pg:"type=uuid"` tag, which bypasses this function entirely.
 		if typ.Implements(stringerTyp) {
 			return Text
 		}

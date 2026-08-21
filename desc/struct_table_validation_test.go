@@ -41,7 +41,7 @@ type validationProbe struct {
 // TestConvertStructToTableRejectsUnsafeTableName is the Register-level rejection table for the
 // table name: every unsafe name must produce a descriptive error, never reach a query builder.
 func TestConvertStructToTableRejectsUnsafeTableName(t *testing.T) {
-	typ := reflect.TypeOf(validationProbe{})
+	typ := reflect.TypeFor[validationProbe]()
 
 	invalidNames := []string{
 		`bad"table`,
@@ -73,7 +73,7 @@ func newSingleFieldStructType(tag string) reflect.Type {
 	return reflect.StructOf([]reflect.StructField{
 		{
 			Name: "F",
-			Type: reflect.TypeOf(""),
+			Type: reflect.TypeFor[string](),
 			Tag:  reflect.StructTag(tag),
 		},
 	})
@@ -209,14 +209,14 @@ func TestConvertStructToTableTypeArgumentParenParsing(t *testing.T) {
 			}
 		}()
 
-		_, err := ConvertStructToTable("paren_bad", reflect.TypeOf(parenBadType{}))
+		_, err := ConvertStructToTable("paren_bad", reflect.TypeFor[parenBadType]())
 		if err == nil {
 			t.Fatal(`expected an error for pg:"type=varchar)x(255", got nil`)
 		}
 	})
 
 	t.Run("well-formed parens still parse the type argument", func(t *testing.T) {
-		td, err := ConvertStructToTable("paren_good", reflect.TypeOf(parenGoodType{}))
+		td, err := ConvertStructToTable("paren_good", reflect.TypeFor[parenGoodType]())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

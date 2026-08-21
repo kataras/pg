@@ -1,10 +1,10 @@
 module github.com/kataras/pg
 
-go 1.26
+go 1.27
 
 require (
 	github.com/gertd/go-pluralize v0.2.1
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.10.0
 	golang.org/x/mod v0.33.0
 )
 

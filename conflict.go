@@ -94,7 +94,7 @@ func (repo *Repository[T]) InsertSingleOnConflict(ctx context.Context, oc OnConf
 // not build, validate or quote any part of them. Callers are responsible for parameterizing
 // user-supplied values via $N placeholders in args/insertExtraArgs, never by string-concatenating
 // them into the query text.
-func UpdateOrInsert[R any](ctx context.Context, db *DB, updateQuery, insertQuery string, args []any, insertExtraArgs ...any) (R, error) {
+func (db *DB) UpdateOrInsert[R any](ctx context.Context, updateQuery, insertQuery string, args []any, insertExtraArgs ...any) (R, error) {
 	var result R
 
 	err := db.QueryRow(ctx, updateQuery, args...).Scan(&result)

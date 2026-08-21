@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var scannerInterface = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+var scannerInterface = reflect.TypeFor[sql.Scanner]()
 
 func implementsScanner(typ reflect.Type) bool {
 	return typ.Implements(scannerInterface) || reflect.PointerTo(typ).Implements(scannerInterface)

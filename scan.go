@@ -14,9 +14,8 @@ import (
 // indexes/constraints information, and explicit "type=" overrides that descriptor carries).
 // Only when T is not registered does it fall back to desc.LooseTable, which builds a descriptor
 // purely from T's field tags/names via reflection, with no Schema involvement at all.
-func tableForScan[T any](db *DB) (*desc.Table, error) {
-	var value T
-	typ := reflect.TypeOf(value)
+func (db *DB) tableForScan[T any]() (*desc.Table, error) {
+	typ := reflect.TypeFor[T]()
 
 	if td, err := db.schema.Get(typ); err == nil {
 		return td, nil
@@ -58,11 +57,11 @@ func tableForScan[T any](db *DB) (*desc.Table, error) {
 //		Customer *Customer // populated from a `to_jsonb(c.*) AS customer` projection.
 //	}
 //
-//	rows, err := pg.QueryStructs[OrderWithCustomer](ctx, db, `
+//	rows, err := db.QueryStructs[OrderWithCustomer](ctx, `
 //		SELECT o.id, o.total, to_jsonb(c.*) AS customer
 //		FROM orders o JOIN customers c ON c.id = o.customer_id`)
-func QueryStructs[T any](ctx context.Context, db *DB, query string, args ...any) ([]T, error) {
-	td, err := tableForScan[T](db)
+func (db *DB) QueryStructs[T any](ctx context.Context, query string, args ...any) ([]T, error) {
+	td, err := db.tableForScan[T]()
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +71,7 @@ func QueryStructs[T any](ctx context.Context, db *DB, query string, args ...any)
 		return nil, err
 	}
 
-	return desc.RowsToStruct[T](td, rows)
+	return td.RowsToStruct[T](rows)
 }
 
 // QueryStruct is QueryStructs for exactly one row: it executes query, scans the first returned
@@ -82,14 +81,14 @@ func QueryStructs[T any](ctx context.Context, db *DB, query string, args ...any)
 //
 // Example:
 //
-//	item, err := pg.QueryStruct[OrderWithCustomer](ctx, db, `
+//	item, err := db.QueryStruct[OrderWithCustomer](ctx, `
 //		SELECT o.id, o.total, to_jsonb(c.*) AS customer
 //		FROM orders o JOIN customers c ON c.id = o.customer_id
 //		WHERE o.id = $1`, orderID)
-func QueryStruct[T any](ctx context.Context, db *DB, query string, args ...any) (T, error) {
+func (db *DB) QueryStruct[T any](ctx context.Context, query string, args ...any) (T, error) {
 	var zero T
 
-	td, err := tableForScan[T](db)
+	td, err := db.tableForScan[T]()
 	if err != nil {
 		return zero, err
 	}
@@ -99,7 +98,7 @@ func QueryStruct[T any](ctx context.Context, db *DB, query string, args ...any) 
 		return zero, err
 	}
 
-	return desc.RowToStruct[T](td, rows)
+	return td.RowToStruct[T](rows)
 }
 
 // ScanStructs scans every remaining row of rows (as produced by DB.Query, Repository[T].Query, a
@@ -120,13 +119,11 @@ func QueryStruct[T any](ctx context.Context, db *DB, query string, args ...any) 
 //	}
 //	users, err := pg.ScanStructs[User](rows)
 func ScanStructs[T any](rows Rows) ([]T, error) {
-	var value T
-
-	td, err := desc.LooseTable(reflect.TypeOf(value))
+	td, err := desc.LooseTable(reflect.TypeFor[T]())
 	if err != nil {
 		rows.Close()
 		return nil, err
 	}
 
-	return desc.RowsToStruct[T](td, rows)
+	return td.RowsToStruct[T](rows)
 }

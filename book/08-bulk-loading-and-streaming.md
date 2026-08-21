@@ -13,7 +13,7 @@ critically, no per-row `DEFAULT`, which changes how a defaulted column
 behaves across a batch in a way worth understanding before you reach
 for it. The second half of this chapter is the opposite direction:
 reading many rows without materializing them all in memory first, via
-`Repository[T].SelectIter` and the package-level `QueryIter`, both
+`Repository[T].SelectIter` and `DB.QueryIter`, both
 built on Go's `iter.Seq2` range-over-func iterators. Every signature
 and behavior here was verified against `desc/copy_from.go`,
 `db_copy.go`, `repository_copy.go` and `repository_iter.go`.
@@ -207,22 +207,22 @@ that is not all-zero across the batch.
 
 ## Streaming Reads: SelectIter and QueryIter
 
-`Repository[T].SelectIter` and the package-level `QueryIter` are the
-read-side counterpart: a lazy, single-use iterator that decodes one
-row at a time, without ever materializing the whole result as a slice.
+`Repository[T].SelectIter` and `DB.QueryIter` are the read-side
+counterpart: a lazy, single-use iterator that decodes one row at a
+time, without ever materializing the whole result as a slice.
 
 ```go
 func (repo *Repository[T]) SelectIter(ctx context.Context,
     query string, args ...any) iter.Seq2[T, error]
 
-func QueryIter[T any](ctx context.Context, db *DB,
+func (db *DB) QueryIter[T any](ctx context.Context,
     query string, args ...any) iter.Seq2[T, error]
 ```
 
 `SelectIter` scans each row into `T` using the same per-row struct
 scanning `Repository[T].Select` itself uses
 (`desc.ConvertRowsToStruct` against the repository's own cached table
-descriptor); `QueryIter` is the streaming analog of `QuerySlice`,
+descriptor); `db.QueryIter` is the streaming analog of `db.QuerySlice`,
 scanning directly into a single scannable `T` such as `string` or
 `int64`. Use either instead of the slice-returning form for exports
 and large scans where a full `[]T` would not fit comfortably in
@@ -239,7 +239,7 @@ for row, err := range repo.SelectIter(ctx, "SELECT * FROM big_table") {
 }
 ```
 
-Result semantics are identical between the two functions. A query
+Result semantics are identical between the two. A query
 error (the initial `Query` call itself failing) yields exactly one
 pair, `(zero T, that error)`, and then the iterator stops. A row-scan
 error, or a `rows.Err()` surfaced after the last row, is reported the
@@ -251,7 +251,7 @@ check `err` first without also checking the value. `QueryIter` does
 not replicate `QuerySlice`'s "drop every empty string" quirk (see
 [Chapter 5](05-querying-and-scanning.md)): it yields every row
 exactly as `SelectIter`/`Select` do, so switching an existing
-`QuerySlice[string]` call to `QueryIter[string]` can change what you
+`db.QuerySlice[string]` call to `db.QueryIter[string]` can change what you
 observe if you were relying on that quirk.
 
 ## Single-Use Iterators and Connection Lifetime
@@ -322,7 +322,7 @@ err := repo.InTransaction(ctx, func(tx *pg.Repository[BigRow]) error {
         }
 
         // RowsToStruct closes rows itself.
-        batch, err := desc.RowsToStruct[BigRow](tx.Table(), rows)
+        batch, err := tx.Table().RowsToStruct[BigRow](rows)
         if err != nil {
             return err
         }
@@ -336,7 +336,7 @@ err := repo.InTransaction(ctx, func(tx *pg.Repository[BigRow]) error {
 ```
 
 Each `FETCH` round trip reuses the same underlying scanning machinery
-`Repository[T].Select` uses (`desc.RowsToStruct` against
+`Repository[T].Select` uses (`RowsToStruct[T]` on
 `tx.Table()`'s descriptor), so a batch of rows scans exactly the same
 way it would from any other query. Reach for `SelectIter` first; reach
 for a hand-declared cursor only when you specifically need the

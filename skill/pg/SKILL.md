@@ -55,7 +55,7 @@ func main() {
 ```
 
 - Module path: `github.com/kataras/pg`
-- Go 1.26+, PostgreSQL 16.x
+- Go 1.27+, PostgreSQL 16.x
 
 ## Rules that prevent the common mistakes
 

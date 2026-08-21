@@ -2,6 +2,89 @@
 
 All notable changes to this project are documented here.
 
+## [1.0.14] - 2026-08-21
+
+Migration to Go 1.27. **The `go` directive is now `go 1.27`**, which is a hard floor on the whole
+build graph: a module that consumes this one must declare `go 1.27` or later itself. The pgx
+dependency also moves to v5.10.0, which carries an upstream SQL injection fix.
+
+### Breaking
+
+- **The package-level generic query helpers are now generic methods on `*DB`, and the functions
+  were removed.** Go 1.27 allows a method to declare its own type parameters, which is the only
+  reason these were ever free functions. Rewrite `pg.X[T](ctx, db, ...)` as `db.X[T](ctx, ...)`:
+  `QuerySlice`, `QueryTwoSlices`, `QueryMap`, `QuerySingle`, `QueryFunc`, `QueryStructs`,
+  `QueryStruct`, `QueryIter` and `UpdateOrInsert`. Likewise `desc.RowsToStruct[T](td, rows)`,
+  `desc.RowToStruct` and `desc.RowsToStructWithTotal` became methods on `*desc.Table`:
+  `td.RowsToStruct[T](rows)`. The break is compile-time.
+- **`pg.InTransaction[R]` became `DB.InTransactionWrap[R]`** - a rename, not just a move, because
+  `DB.InTransaction` already exists and a method name must be unique per receiver. The two are
+  different things: `db.InTransaction(ctx, func(*DB) error)` is unchanged, while
+  `db.InTransactionWrap(ctx, wrap, fn)` rebuilds a typed repository wrapper around the
+  transactional `*DB`.
+- **NOTIFY payload bytes changed for strings containing `<`, `>` or `&`.** The library now
+  marshals with `encoding/json/v2`, which does not HTML-escape those characters the way v1 did.
+  Payloads still round-trip correctly through `UnmarshalNotification` and `ListenTable`; only a
+  non-Go consumer reading the raw channel, or a test comparing raw bytes, can observe it.
+- **A `json:"-,"` tag on a scanned struct is now an error.** v1 read the trailing comma as "a
+  field literally named `-`"; `encoding/json/v2` rejects it as a malformed tag, so a JSON/JSONB
+  column decoding into such a struct now fails instead of populating that field. A bare
+  `json:"-"` still skips the field, as before. This affects decoding only - `desc.LooseTable`
+  parses the `json` tag itself when deriving a *column name*, so column naming is unchanged.
+
+`pg.NewRepository[T]`, `pg.ScanStructs[T]`, `pg.UnmarshalNotification[T]`, `pg.Ptr` and
+`pg.NullIfZero` are unchanged. The last three cannot become methods at all: their natural
+receivers (`Rows`, `Notification`) are aliases to pgx types, and Go does not allow methods on
+non-local types.
+
+### Added
+
+- **The Go 1.27 standard library `uuid` package is a first-class field type.** A `uuid.UUID`
+  field maps to a `uuid` column and `[]uuid.UUID` to `uuid[]`, with no `type=` tag needed; a
+  non-nullable `uuid.UUID` primary key still gets the automatic `DEFAULT gen_random_uuid()`, and
+  a zero `uuid.UUID` is treated as unset so the server generates the value. Previously such a
+  field was silently classified as `text`, because `uuid.UUID` satisfies `fmt.Stringer` and hit
+  that fallback. String-based UUID fields are unaffected, and other 16-byte UUID types
+  (`github.com/google/uuid`, `gofrs/uuid`) still need an explicit `pg:"type=uuid"` tag - matching
+  them by shape would misclassify an MD5 digest, which belongs in `bytea`.
+- `DB.NewRepository[T]()` as a method alternative to `pg.NewRepository[T](db)`.
+- `nullableScanner` now falls back to `encoding.TextUnmarshaler` for a text-form driver value.
+  This is what makes a *nullable* `uuid.UUID` column work: pgx hands a `sql.Scanner` the
+  canonical uuid string, and a Go string is neither assignable nor convertible to a
+  `[16]byte`-based type.
+
+### Changed
+
+- **Migrated to `encoding/json/v2`.** The JSON/JSONB scan path and the LISTEN/NOTIFY paths pass
+  `json.MatchCaseInsensitiveNames(true)` wherever the destination is a caller-supplied type,
+  preserving v1's matching behavior: PostgreSQL emits lower-cased column names in
+  `to_jsonb(x.*)` projections, while the structs they decode into carry `pg` tags rather than
+  `json` ones. Without it those fields would silently stay at their zero values. The exported
+  `TableNotificationJSON` alias still uses `encoding/json`'s `RawMessage`, which v2 handles
+  natively, so consumer code is unchanged.
+- CI runs on Go 1.27.x and `golangci-lint` v2.13, the first release that can parse generic
+  methods.
+- Applied the Go 1.27 `go fix` modernizers across the library: `reflect.TypeFor[T]()`,
+  `slices.Contains`, `strings.SplitSeq`, `errors.AsType[E]` and `range n` loops.
+- `_benchmarks` no longer depends on `github.com/google/uuid`; it uses the standard library.
+- **`github.com/jackc/pgx/v5` moved from v5.8.0 to v5.10.0.** No source change was needed: every
+  pgx symbol this library uses kept its signature, `pgx.Identifier.Sanitize` (the single escaping
+  path behind `QuoteIdentifier`) is byte-for-byte unchanged, and the only export pgx dropped is
+  `pgconn.PgConn.SecretKey`, which this library never called. The bump matters because v5.9.2
+  fixes GHSA-j88v-2chj-qfwx, a SQL injection through placeholder confusion inside dollar-quoted
+  string literals; it is reachable only under `pgx.QueryExecModeSimpleProtocol`, which this
+  library never selects, so only a caller that opts into the simple protocol was ever exposed.
+  v5.9.0 and v5.10.0 also bound the binary decoders against a malicious or compromised server,
+  add `require_auth` and `ConnStringAllowedKeys` to the connection string, and add PostgreSQL
+  protocol 3.2 and SCRAM-SHA-256-PLUS support. pgx now requires Go 1.25 or later, which the
+  `go 1.27` directive already exceeds, and it pulls in no new dependencies.
+
+### Fixed
+
+- `gen`'s `getCallerPackageName` sliced the full symbol name with an index computed against a
+  substring of it, so it returned a truncated package path. It now cuts at the last dot after the
+  final slash, via `strings.CutLast`. (The function is currently unreferenced.)
+
 ## [1.0.13] - 2026-08-16
 
 A security, correctness and documentation pass over the whole library, plus a large set of

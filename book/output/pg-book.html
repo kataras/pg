@@ -864,7 +864,7 @@ against the library source.
         <span class="toc-title">Schema and Struct Tags</span></a>
       
       <ol class="toc-sections">
-        <li><a href="#ch02-the-pg-struct-tag">The pg Struct Tag</a></li><li><a href="#ch02-tag-option-reference">Tag Option Reference</a></li><li><a href="#ch02-primary-keys-and-generated-defaults">Primary Keys and Generated Defaults</a></li><li><a href="#ch02-references-and-foreign-keys">References and Foreign Keys</a></li><li><a href="#ch02-indexes-and-uniqueness">Indexes and Uniqueness</a></li><li><a href="#ch02-struct-embedding">Struct Embedding</a></li><li><a href="#ch02-column-naming-and-name-mappers">Column Naming and Name Mappers</a></li><li><a href="#ch02-the-schema-registry">The Schema Registry</a></li><li><a href="#ch02-views-and-presenters">Views and Presenters</a></li><li><a href="#ch02-data-types">Data Types</a></li><li><a href="#ch02-identifier-validation">Identifier Validation</a></li><li><a href="#ch02-summary">Summary</a></li><li><a href="#ch02-further-reading">Further Reading</a></li>
+        <li><a href="#ch02-the-pg-struct-tag">The pg Struct Tag</a></li><li><a href="#ch02-tag-option-reference">Tag Option Reference</a></li><li><a href="#ch02-primary-keys-and-generated-defaults">Primary Keys and Generated Defaults</a></li><li><a href="#ch02-references-and-foreign-keys">References and Foreign Keys</a></li><li><a href="#ch02-indexes-and-uniqueness">Indexes and Uniqueness</a></li><li><a href="#ch02-struct-embedding">Struct Embedding</a></li><li><a href="#ch02-column-naming-and-name-mappers">Column Naming and Name Mappers</a></li><li><a href="#ch02-the-schema-registry">The Schema Registry</a></li><li><a href="#ch02-views-and-presenters">Views and Presenters</a></li><li><a href="#ch02-data-types">Data Types</a></li><li><a href="#ch02-uuid-uuid-fields">uuid.UUID Fields</a></li><li><a href="#ch02-identifier-validation">Identifier Validation</a></li><li><a href="#ch02-summary">Summary</a></li><li><a href="#ch02-further-reading">Further Reading</a></li>
       </ol>
       
     </li>
@@ -934,7 +934,7 @@ against the library source.
         <span class="toc-title">Transactions</span></a>
       
       <ol class="toc-sections">
-        <li><a href="#ch09-background">Background</a></li><li><a href="#ch09-db-intransaction">DB.InTransaction</a></li><li><a href="#ch09-why-commit-errors-must-propagate">Why Commit Errors Must Propagate</a></li><li><a href="#ch09-nesting-join-versus-savepoint">Nesting: Join Versus Savepoint</a></li><li><a href="#ch09-manual-control-begin-commit-rollback-istransaction">Manual Control: Begin, Commit, Rollback, IsTransaction</a></li><li><a href="#ch09-repository-intransaction">Repository InTransaction</a></li><li><a href="#ch09-pg-intransaction-and-typed-wrappers">pg.InTransaction and Typed Wrappers</a></li><li><a href="#ch09-concurrent-access-to-one-transaction">Concurrent Access to One Transaction</a></li><li><a href="#ch09-retrying-transient-failures">Retrying Transient Failures</a></li><li><a href="#ch09-retryoptions">RetryOptions</a></li><li><a href="#ch09-intransactionretry">InTransactionRetry</a></li><li><a href="#ch09-full-jitter-backoff">Full Jitter Backoff</a></li><li><a href="#ch09-nested-retry-calls-run-once">Nested Retry Calls Run Once</a></li><li><a href="#ch09-execmany">ExecMany</a></li><li><a href="#ch09-setconstraintsdeferred">SetConstraintsDeferred</a></li><li><a href="#ch09-summary">Summary</a></li><li><a href="#ch09-further-reading">Further Reading</a></li>
+        <li><a href="#ch09-background">Background</a></li><li><a href="#ch09-db-intransaction">DB.InTransaction</a></li><li><a href="#ch09-why-commit-errors-must-propagate">Why Commit Errors Must Propagate</a></li><li><a href="#ch09-nesting-join-versus-savepoint">Nesting: Join Versus Savepoint</a></li><li><a href="#ch09-manual-control-begin-commit-rollback-istransaction">Manual Control: Begin, Commit, Rollback, IsTransaction</a></li><li><a href="#ch09-repository-intransaction">Repository InTransaction</a></li><li><a href="#ch09-db-intransactionwrap-and-typed-wrappers">DB.InTransactionWrap and Typed Wrappers</a></li><li><a href="#ch09-concurrent-access-to-one-transaction">Concurrent Access to One Transaction</a></li><li><a href="#ch09-retrying-transient-failures">Retrying Transient Failures</a></li><li><a href="#ch09-retryoptions">RetryOptions</a></li><li><a href="#ch09-intransactionretry">InTransactionRetry</a></li><li><a href="#ch09-full-jitter-backoff">Full Jitter Backoff</a></li><li><a href="#ch09-nested-retry-calls-run-once">Nested Retry Calls Run Once</a></li><li><a href="#ch09-execmany">ExecMany</a></li><li><a href="#ch09-setconstraintsdeferred">SetConstraintsDeferred</a></li><li><a href="#ch09-summary">Summary</a></li><li><a href="#ch09-further-reading">Further Reading</a></li>
       </ol>
       
     </li>
@@ -1073,7 +1073,7 @@ updates.</li>
 complete enough to adapt directly into a real program; where an example
 belongs to a larger program, the chapter says so. Shell commands are
 written for a POSIX shell and work in PowerShell unless noted. The
-examples target Go 1.26, the version pg&rsquo;s own go.mod requires, and are
+examples target Go 1.27, the version pg&rsquo;s own go.mod requires, and are
 written against the library as published in this book&rsquo;s edition; every
 identifier in every listing was checked against the source before the
 chapter shipped.</p>
@@ -1112,7 +1112,7 @@ describe a table once, as a Go struct carrying <code>pg:&quot;...&quot;</code> f
 and the library generates the SQL needed to create that table, verify
 it against a live database, and read and write rows through a generic
 <code>Repository[T]</code>. The module path is <code>github.com/kataras/pg</code> and it
-requires Go 1.26 or newer. This chapter installs the module, builds a
+requires Go 1.27 or newer. This chapter installs the module, builds a
 first program end to end (a struct, a schema, a connection, an insert
 and a read), and names the pieces you will meet again in every later
 chapter. Every symbol and example in this chapter is checked against
@@ -1161,7 +1161,7 @@ fields by name when scanning, and to build <code>INSERT</code>, <code>UPDATE</co
 
 <h2 id="ch01-installation">Installation</h2>
 
-<p>You need <a href="https://go.dev/dl/">Go 1.26+</a>. Create a module and add pg to
+<p>You need <a href="https://go.dev/dl/">Go 1.27+</a>. Create a module and add pg to
 it:</p>
 <figure class="code" data-lang="sh"><figcaption>sh</figcaption><pre class="chroma"><code><div class="cl"><span>mkdir</span><span> </span><span>myapp</span><span> </span><span class="o">&amp;&amp;</span><span> </span><span class="nb">cd</span><span> </span><span>myapp</span></div><div class="cl"><span>go</span><span> </span><span>mod</span><span> </span><span>init</span><span> </span><span>myapp</span></div><div class="cl"><span>go</span><span> </span><span>get</span><span> </span><span>github.com/kataras/pg@latest</span></div></code></pre></figure>
 <p>pg depends on <code>github.com/jackc/pgx/v5</code> (the driver and connection
@@ -1496,7 +1496,11 @@ column of type <code>UUID</code> with no explicit <code>default=</code>, not mar
 <code>nullable</code>, and with no <code>ref=</code> (a referencing primary key, common in
 one-to-one table splits, is left alone) gets the default
 <code>gen_random_uuid()</code> filled in for you:</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">ID</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="s">`</span><span class="s">pg:&#34;type=uuid,primary&#34;</span><span class="s">`</span><span class="w"> </span><span class="c1">// gets default=gen_random_uuid()</span></div></code></pre></figure>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="c1">// Either spelling of the field gets default=gen_random_uuid():</span></div><div class="cl"><span class="nx">ID</span><span class="w"> </span><span class="kt">string</span><span class="w">    </span><span class="s">`</span><span class="s">pg:&#34;type=uuid,primary&#34;</span><span class="s">`</span></div><div class="cl"><span class="nx">ID</span><span class="w"> </span><span class="nx">uuid</span><span class="p">.</span><span class="nx">UUID</span><span class="w"> </span><span class="s">`</span><span class="s">pg:&#34;primary&#34;</span><span class="s">`</span><span class="w"> </span><span class="c1">// no type= needed; see below</span></div></code></pre></figure>
+<p>The second form is the Go 1.27 standard library&rsquo;s <code>uuid.UUID</code>, which
+pg maps to a <code>uuid</code> column on its own; see
+<a href="#uuiduuid-fields">uuid.UUID Fields</a>.</p>
+
 <p><code>Column.IsGeneratedPrimaryUUID()</code> and <code>Column.IsGeneratedTimestamp()</code>
 (true for a time-typed column defaulting to <code>clock_timestamp()</code> or
 <code>now()</code>) both feed <code>Column.IsGenerated()</code>, which is what excludes a
@@ -1965,15 +1969,63 @@ time.</p>
 column a default based on the Go field&rsquo;s type before the tag is even
 parsed (<code>string</code> to <code>Text</code>, <code>int</code>/<code>int32</code>/<code>int64</code> to <code>Integer</code>,
 <code>float32</code>/<code>float64</code> to <code>Numeric</code>, <code>bool</code> to <code>Boolean</code>, <code>time.Time</code> to
-<code>Timestamp</code>, and so on), and a <code>type=</code> in the tag simply overrides
-that default. In practice you still write <code>type=</code> explicitly for
-anything the default gets wrong for your schema: a <code>uuid</code>-holding
+<code>Timestamp</code>, <code>uuid.UUID</code> to <code>UUID</code>, <code>[]uuid.UUID</code> to <code>UUIDArray</code>, and
+so on), and a <code>type=</code> in the tag simply overrides that default. In
+practice you still write <code>type=</code> explicitly for anything the default
+gets wrong for your schema: a <code>uuid</code>-holding
 <code>string</code> field, a <code>varchar(255)</code> with an explicit length, a <code>jsonb</code>
 column, or any array or range type. <code>CIText</code> and <code>HStore</code> also need
 their PostgreSQL extension created before <code>CreateSchema</code> runs
 (<code>CREATE EXTENSION IF NOT EXISTS citext</code>/<code>hstore</code>), which
 <code>CreateSchema</code> does automatically whenever a registered column uses
 one of them.</p>
+
+<h2 id="ch02-uuid-uuid-fields">uuid.UUID Fields</h2>
+
+<p>Go 1.27 added a <code>uuid</code> package to the standard library, and pg treats
+<code>uuid.UUID</code> (a 16-byte array, with <code>uuid.New</code>, <code>uuid.NewV4</code>,
+<code>uuid.NewV7</code>, <code>uuid.Parse</code> and friends around it) as a first-class
+field type. <code>goTypeToDataType</code> classifies it as <code>UUID</code> and
+<code>[]uuid.UUID</code> as <code>UUIDArray</code>, so a <code>uuid</code> column needs no <code>type=</code>
+option at all:</p>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">Customer</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">ID</span><span class="w">   </span><span class="nx">uuid</span><span class="p">.</span><span class="nx">UUID</span><span class="w"> </span><span class="s">`</span><span class="s">pg:&#34;primary&#34;</span><span class="s">`</span><span class="w">          </span><span class="c1">// uuid, DEFAULT gen_random_uuid()</span></div><div class="cl"><span class="w">    </span><span class="nx">Name</span><span class="w"> </span><span class="kt">string</span><span class="w">    </span><span class="s">`</span><span class="s">pg:&#34;type=varchar(255)&#34;</span><span class="s">`</span></div><div class="cl"><span class="p">}</span></div></code></pre></figure>
+<p>Everything the <a href="#primary-keys-and-generated-defaults">Primary Keys and Generated
+Defaults</a> section describes
+applies unchanged: the column&rsquo;s resolved type is <code>UUID</code>, so a
+non-nullable <code>primary</code> field with no <code>default=</code> and no <code>ref=</code> still
+picks up <code>gen_random_uuid()</code> automatically, and <code>CreateSchema</code> still
+emits <code>CREATE EXTENSION IF NOT EXISTS pgcrypto</code> for the schema. An
+all-zero <code>uuid.UUID</code> counts as a zero value, so the column is left out
+of the <code>INSERT</code> and the server-side default fires, exactly as an empty
+<code>string</code> does for a <code>pg:&quot;type=uuid,primary&quot;</code> field (see
+<a href="07-writing-data.md">Chapter 7</a>).</p>
+
+<p>Three things this deliberately does <em>not</em> change:</p>
+
+<ul>
+<li><strong>String-typed UUID fields still work.</strong> <code>ID string
+`pg:&quot;type=uuid,primary&quot;`</code> behaves exactly as it always has. This
+is an addition, not a replacement, and there is no reason to migrate
+an existing struct.</li>
+<li><strong>Other <code>[16]byte</code>-based UUID types are not detected by shape.</strong>
+<code>github.com/google/uuid</code>, <code>gofrs/uuid</code> and hand-rolled equivalents
+are matched by exact type, so they do not get the automatic
+classification: a bare <code>[16]byte</code> is just as plausibly an MD5
+digest, which belongs in <code>bytea</code>. Give those an explicit
+<code>pg:&quot;type=uuid&quot;</code>, which bypasses type inference entirely and has
+always been the way to use them.</li>
+<li><strong>The code generator is unaffected.</strong> <code>gen</code> maps a <code>uuid</code> column
+back to <code>string</code> (<code>dataTypeToGoType</code> is unchanged), so generated
+structs keep the shape they had; see
+<a href="13-introspection-and-code-generation.md">Chapter 13</a>.</li>
+</ul>
+
+<p>The ordering matters internally, and is worth knowing if you ever read
+<code>desc/data_type.go</code>: the <code>uuid.UUID</code> cases sit <em>before</em> the
+<code>fmt.Stringer</code> fallback. <code>uuid.UUID</code> has a <code>String</code> method, so without
+them a plain <code>ID uuid.UUID</code> field would fall through to <code>Text</code> and
+quietly create a <code>text</code> column instead of a <code>uuid</code> one, which is what
+earlier releases of pg did.</p>
 
 <h2 id="ch02-identifier-validation">Identifier Validation</h2>
 
@@ -2014,6 +2066,11 @@ raw, developer-authored SQL, never end-user input.</li>
 <li>A <code>uuid</code> primary key with no explicit default gets
 <code>gen_random_uuid()</code> automatically; <code>CreateSchema</code> adds the
 <code>pgcrypto</code> extension whenever that (or <code>password</code>) applies.</li>
+<li>A field typed <code>uuid.UUID</code> (the Go 1.27 standard library type) maps
+to a <code>uuid</code> column, and <code>[]uuid.UUID</code> to <code>uuid[]</code>, with no <code>type=</code>
+option needed. String-typed <code>pg:&quot;type=uuid&quot;</code> fields are
+unaffected, and other <code>[16]byte</code> UUID packages still need the
+explicit tag.</li>
 <li>Embedded structs flatten into the parent table (except
 <code>time.Time</code> and JSON-tagged fields); <code>SetDefaultColumnNameMapper</code>,
 <code>NoColumnNameMapper</code> and <code>JSONColumnNameMapper</code> control how field
@@ -2040,6 +2097,9 @@ the <code>GENERATED ALWAYS AS (...) STORED</code> syntax behind the
 <code>generated</code> tag option.</li>
 <li><a href="https://www.postgresql.org/docs/current/pgcrypto.html">pgcrypto</a>:
 the extension providing <code>gen_random_uuid()</code>.</li>
+<li><a href="https://pkg.go.dev/uuid">Go: uuid</a>:
+the standard library <code>uuid.UUID</code> type and its constructors, which pg
+maps straight onto a <code>uuid</code> column.</li>
 <li><a href="https://www.postgresql.org/docs/current/indexes.html">PostgreSQL: Indexes</a>:
 the access methods (<code>btree</code>, <code>hash</code>, <code>gist</code>, <code>spgist</code>, <code>gin</code>,
 <code>brin</code>) the <code>index</code> tag option chooses between.</li>
@@ -2455,7 +2515,7 @@ the table-name API sound. Every signature below is read directly out
 of <code>repository.go</code>, <code>db_repository.go</code> and <code>db_crud.go</code>.</p>
 
 <h2 id="ch04-repository-t-the-type-safe-entry-point">Repository[T]: The Type-Safe Entry Point</h2>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="nx">NewRepository</span><span class="p">[</span><span class="nx">T</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">Repository</span><span class="p">[</span><span class="nx">T</span><span class="p">]</span></div></code></pre></figure>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="nx">NewRepository</span><span class="p">[</span><span class="nx">T</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">Repository</span><span class="p">[</span><span class="nx">T</span><span class="p">]</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="nx">NewRepository</span><span class="p">[</span><span class="nx">T</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">Repository</span><span class="p">[</span><span class="nx">T</span><span class="p">]</span><span class="w"> </span><span class="c1">// the method form</span></div></code></pre></figure>
 <p><code>NewRepository[T]</code> looks up <code>T</code>&rsquo;s table definition in <code>db</code>&rsquo;s <code>Schema</code>
 (the same <code>Schema.Get</code> lookup by <code>reflect.Type</code> that
 <a href="02-schema-and-struct-tags.md">Chapter 2</a> covers) and caches it on the
@@ -2465,6 +2525,11 @@ A typo between the struct you registered and the struct you build a
 repository for is a startup-time failure, not a runtime error the
 first time a handler runs:</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">customers</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">NewRepository</span><span class="p">[</span><span class="nx">Customer</span><span class="p">]</span><span class="p">(</span><span class="nx">db</span><span class="p">)</span><span class="w"> </span><span class="c1">// panics if Customer</span></div><div class="cl"><span class="w">                                             </span><span class="c1">// was never registered</span></div></code></pre></figure>
+<p><code>db.NewRepository[Customer]()</code> is the same thing spelled as a method,
+for call sites that read better with the database first; it calls the
+function above and behaves identically. This book uses the function
+form throughout.</p>
+
 <p><code>repo.DB()</code> returns the underlying <code>*DB</code>, and <code>repo.Table()</code> returns
 the cached <code>*desc.Table</code> (read-only; do not mutate it). <code>repo.IsReadOnly()</code>
 reports whether the underlying table is a view or presenter (see
@@ -2835,8 +2900,8 @@ it takes a scanner callback instead of returning <code>[]T</code>, because <code
 has no <code>T</code> to scan into automatically:</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="nf">Select</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">scannerFunc</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">Rows</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="p">,</span><span class="w"> </span><span class="nx">query</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="w"> </span><span class="o">...</span><span class="kt">any</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span></div></code></pre></figure><figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">var</span><span class="w"> </span><span class="nx">names</span><span class="w"> </span><span class="p">[</span><span class="p">]</span><span class="kt">string</span></div><div class="cl"><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nf">Select</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">rows</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">Rows</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">rows</span><span class="p">.</span><span class="nf">Next</span><span class="p">(</span><span class="p">)</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="kd">var</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="kt">string</span></div><div class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">rows</span><span class="p">.</span><span class="nf">Scan</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">name</span><span class="p">)</span><span class="p">;</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">        </span><span class="p">}</span></div><div class="cl"><span class="w">        </span><span class="nx">names</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="nx">names</span><span class="p">,</span><span class="w"> </span><span class="nx">name</span><span class="p">)</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span></div><div class="cl"><span class="p">}</span><span class="p">,</span><span class="w"> </span><span class="s">`</span><span class="s">SELECT firstname FROM customers;</span><span class="s">`</span><span class="p">)</span></div></code></pre></figure>
 <p>For the common &ldquo;scan a single column into a slice&rdquo; or &ldquo;scan one ad
-hoc row&rdquo; shapes, the package-level generic helpers <code>QuerySlice[T]</code>,
-<code>QueryMap[K, V]</code> and <code>QueryFunc[T]</code> (in <code>common.go</code>) usually read
+hoc row&rdquo; shapes, the generic <code>*DB</code> methods <code>db.QuerySlice[T]</code>,
+<code>db.QueryMap[K, V]</code> and <code>db.QueryFunc[T]</code> (in <code>common.go</code>) usually read
 better than a hand-written <code>DB.Select</code> callback; they are covered in
 <a href="05-querying-and-scanning.md">Chapter 5</a>.</p>
 
@@ -2998,8 +3063,9 @@ signature against the currently installed version.</li>
 expose <code>Query</code>, <code>QueryRow</code>, <code>QueryBoolean</code>, <code>Exec</code>, <code>Mutate</code>,
 <code>MutateSingle</code> and <code>Count</code> directly, so you never have to fight the
 library to write the query you actually want. On top of that, a small
-set of generic helpers in <code>common.go</code> (<code>QuerySlice</code>, <code>QueryTwoSlices</code>,
-<code>QueryMap</code>, <code>QuerySingle</code>, <code>QueryFunc</code>) remove the boilerplate of
+set of generic <code>*DB</code> methods in <code>common.go</code> (<code>QuerySlice</code>,
+<code>QueryTwoSlices</code>, <code>QueryMap</code>, <code>QuerySingle</code>, <code>QueryFunc</code>), each with
+its own type parameters, remove the boilerplate of
 looping over <code>pgx.Rows</code> for the common shapes: a single column, two
 columns, or a hand-written scan function. When the result shape is a
 struct, <code>Repository[T].Select</code> scans through the table&rsquo;s registered
@@ -3132,40 +3198,47 @@ It runs <code>query</code>, hands the resulting <code>Rows</code> to <code>scann
 closes them afterward regardless of what <code>scannerFunc</code> returns. Reach
 for <code>DB.Select</code> when you want to drive <code>rows.Next()</code>/<code>rows.Scan()</code>
 yourself without worrying about closing the rows on every exit path;
-reach for <code>QuerySlice</code>, <code>QueryFunc</code> or <code>QueryStructs</code> (below) when the
+reach for <code>db.QuerySlice</code>, <code>db.QueryFunc</code> or <code>db.QueryStructs</code> (below) when the
 result fits one of their shapes, since they save you from writing that
 loop at all.</p>
 
 <h2 id="ch05-the-generic-query-helpers">The Generic Query Helpers</h2>
 
 <p><strong><code>common.go</code> exists because most result sets are shaped like a list
-of one thing, not a list of structs.</strong> Five package-level generic
-functions cover the common non-struct shapes, all sharing the same
-convention: a query yielding no rows returns an empty, non-nil result
-and a nil error, never <code>ErrNoRows</code>.</p>
+of one thing, not a list of structs.</strong> Five generic methods on <code>*DB</code>
+cover the common non-struct shapes, all sharing the same convention: a
+query yielding no rows returns an empty, non-nil result and a nil
+error, never <code>ErrNoRows</code>.</p>
 
-<p><code>QuerySlice[T any](ctx, db, query, args...) ([]T, error)</code> scans a
+<p>These are <em>methods</em> that carry their own type parameters, a Go 1.27
+feature; before that, Go only allowed type parameters on functions, so
+earlier releases of pg shipped them as package-level functions taking
+the <code>*DB</code> as their first argument. If you are upgrading, rewrite
+<code>pg.QuerySlice[string](ctx, db, q)</code> as <code>db.QuerySlice[string](ctx, q)</code>
+and so on for the whole family.</p>
+
+<p><code>(db *DB) QuerySlice[T any](ctx, query, args...) ([]T, error)</code> scans a
 single-column result directly into a <code>[]T</code>, where <code>T</code> is any type
 <code>rows.Scan</code> accepts on its own (<code>string</code>, <code>int64</code>, <code>time.Time</code>, a
 <code>uuid.UUID</code>, and so on):</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">names</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">QuerySlice</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">db</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="s">&#34;SELECT name FROM customers WHERE active;&#34;</span><span class="p">)</span></div></code></pre></figure>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">names</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">QuerySlice</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="s">&#34;SELECT name FROM customers WHERE active;&#34;</span><span class="p">)</span></div></code></pre></figure>
 <p>When <code>T</code> is <code>string</code>, <code>QuerySlice</code> silently drops every empty-string
 result from the returned list; this is a documented quirk, not a
 general &ldquo;skip zero values&rdquo; rule, and it does not apply to <code>QueryIter</code>
 (<a href="08-bulk-loading-and-streaming.md">Chapter 8</a>) or any other helper.</p>
 
-<p><code>QueryTwoSlices[T, V any](ctx, db, query, args...) ([]T, []V, error)</code>
-is the same idea for a two-column query, returning two parallel
+<p><code>(db *DB) QueryTwoSlices[T, V any](ctx, query, args...) ([]T, []V,
+error)</code> is the same idea for a two-column query, returning two parallel
 slices instead of a slice of pairs.</p>
 
-<p><code>QueryMap[K comparable, V any](ctx, db, query, args...) (map[K]V,
+<p><code>(db *DB) QueryMap[K comparable, V any](ctx, query, args...) (map[K]V,
 error)</code> scans a two-column query into a map keyed by the first column.
 A later duplicate key overwrites an earlier one, so if you need a
 specific row to win, order the query accordingly (an <code>ORDER BY</code> that
 places the winning row last). A no-rows query returns an empty,
 non-nil map, matching the rest of the family.</p>
 
-<p><code>QuerySingle[T any](ctx, db, query, args...) (T, error)</code> is the
+<p><code>(db *DB) QuerySingle[T any](ctx, query, args...) (T, error)</code> is the
 single-row, single-column case, built on <code>QueryRow(...).Scan(&amp;entry)</code>.
 It does surface <code>ErrNoRows</code> (there is no list to fall back to empty),
 so check for it with <code>pg.IsErrNoRows(err)</code> when the caller needs to
@@ -3174,10 +3247,10 @@ tell &ldquo;no row&rdquo; apart from a real failure.</p>
 <p>The last member of the family handles everything QuerySlice cannot
 express: a handful of columns combined into an ad hoc type.
 <code>ScanFunc[T any]</code> is <code>func(rows Rows) (T, error)</code>, and
-<code>QueryFunc[T any](ctx, db, scan ScanFunc[T], query, args...) ([]T,
-error)</code> calls it once per row:</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">nameAndCount</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">Name</span><span class="w">  </span><span class="kt">string</span></div><div class="cl"><span class="w">    </span><span class="nx">Count</span><span class="w"> </span><span class="kt">int64</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">rows</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nf">QueryFunc</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">rows</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">Rows</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">nameAndCount</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">nc</span><span class="w"> </span><span class="nx">nameAndCount</span></div><div class="cl"><span class="w">    </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">rows</span><span class="p">.</span><span class="nf">Scan</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">nc</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">nc</span><span class="p">.</span><span class="nx">Count</span><span class="p">)</span></div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">nc</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="p">}</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;SELECT name, COUNT(*) FROM customers GROUP BY name ORDER BY name;&#34;</span><span class="p">)</span></div></code></pre></figure>
-<p>Every one of these five functions is a thin loop over <code>db.Query</code>
+<code>(db *DB) QueryFunc[T any](ctx, scan ScanFunc[T], query, args...)
+([]T, error)</code> calls it once per row:</p>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">nameAndCount</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">Name</span><span class="w">  </span><span class="kt">string</span></div><div class="cl"><span class="w">    </span><span class="nx">Count</span><span class="w"> </span><span class="kt">int64</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">rows</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nf">QueryFunc</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">rows</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">Rows</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">nameAndCount</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">nc</span><span class="w"> </span><span class="nx">nameAndCount</span></div><div class="cl"><span class="w">    </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">rows</span><span class="p">.</span><span class="nf">Scan</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">nc</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">nc</span><span class="p">.</span><span class="nx">Count</span><span class="p">)</span></div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">nc</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="p">}</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;SELECT name, COUNT(*) FROM customers GROUP BY name ORDER BY name;&#34;</span><span class="p">)</span></div></code></pre></figure>
+<p>Every one of these five methods is a thin loop over <code>db.Query</code>
 followed by <code>rows.Next()</code>/your scan step/<code>rows.Err()</code>, with the
 <code>rows.Close()</code> handled for you via <code>defer</code>. Pick <code>QueryFunc</code> only when
 the row genuinely does not fit a registered struct or a
@@ -3191,9 +3264,10 @@ struct case with less code than a hand-written <code>ScanFunc</code>.</p>
 matching each result column&rsquo;s name, case-insensitively, against the
 struct&rsquo;s descriptor:</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">customers</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repo</span><span class="p">.</span><span class="nf">Select</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="s">&#34;SELECT * FROM customers WHERE created_at &gt; $1&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">since</span><span class="p">)</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">customer</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repo</span><span class="p">.</span><span class="nf">SelectSingle</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="s">&#34;SELECT * FROM customers WHERE id = $1&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="p">)</span></div></code></pre></figure>
-<p>Under the hood both delegate to <code>desc.RowsToStruct[T]</code> and
-<code>desc.RowToStruct[T]</code>, which take the repository&rsquo;s cached <code>*desc.Table</code>
-and a <code>pgx.Rows</code>. A third exported function, <code>desc.ConvertRowsToStruct
+<p>Under the hood both delegate to generic methods on the repository&rsquo;s
+cached <code>*desc.Table</code>: <code>td.RowsToStruct[T](rows pgx.Rows) ([]T, error)</code>
+and <code>td.RowToStruct[T](rows pgx.Rows) (T, error)</code>. A third entry
+point, the plain function <code>desc.ConvertRowsToStruct
 (td *desc.Table, rows pgx.Rows, valuePtr any) error</code>, scans exactly one
 already-positioned row (after a successful <code>rows.Next()</code>) into an
 existing pointer, and is what <code>DB.SelectByID</code> and
@@ -3201,7 +3275,7 @@ existing pointer, and is what <code>DB.SelectByID</code> and
 <a href="08-bulk-loading-and-streaming.md">Chapter 8</a>) build on when a <code>[]T</code>
 or a <code>T</code> return value is not what the caller needs.</p>
 
-<p>Column resolution is O(1) per column: <code>desc.RowsToStruct</code> builds a
+<p>Column resolution is O(1) per column: <code>RowsToStruct</code> builds a
 case-insensitive lookup of the table&rsquo;s columns once, before the row
 loop, rather than re-scanning <code>td.Columns</code> for every column of every
 row. A column with no matching struct field is routed to a no-op
@@ -3211,23 +3285,26 @@ table also gets type-aware scan targets you do not have to think
 about: a nullable <code>UUID</code>/<code>Text</code>/<code>CharacterVarying</code> column tolerates an
 unexpected <code>NULL</code> into a plain (non-pointer) string field, a nullable
 <code>JSONB</code>/<code>JSON</code> column that is not itself a <code>sql.Scanner</code> is decoded
-with <code>encoding/json</code> automatically, and a <code>password</code> column (see
+with <code>encoding/json/v2</code> automatically, and a <code>password</code> column (see
 <a href="07-writing-data.md">Chapter 7</a>) is routed through the table&rsquo;s
 <code>PasswordHandler</code> if one is configured.</p>
 
 <h2 id="ch05-ad-hoc-read-models-querystructs-querystruct-scanstructs">Ad Hoc Read Models: QueryStructs, QueryStruct, ScanStructs</h2>
 
 <p><code>Repository[T]</code> requires <code>T</code> to be registered; <code>NewRepository[T]</code>
-panics otherwise. Three package-level functions in <code>scan.go</code> exist for
+panics otherwise. Three generic entry points in <code>scan.go</code> exist for
 exactly the opposite situation: scanning a query&rsquo;s result into a
 struct that was never registered at all, typically a join result or a
 presenter shape assembled just for one query.</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">OrderWithCustomer</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">ID</span><span class="w">       </span><span class="kt">int64</span></div><div class="cl"><span class="w">    </span><span class="nx">Total</span><span class="w">    </span><span class="kt">float64</span></div><div class="cl"><span class="w">    </span><span class="nx">Customer</span><span class="w"> </span><span class="o">*</span><span class="nx">Customer</span><span class="w"> </span><span class="c1">// populated from to_jsonb(c.*) AS customer.</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">rows</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">QueryStructs</span><span class="p">[</span><span class="nx">OrderWithCustomer</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="s">`</span></div><div class="cl"><span class="s">    SELECT o.id, o.total, to_jsonb(c.*) AS customer</span></div><div class="cl"><span class="s">    FROM orders o JOIN customers c ON c.id = o.customer_id</span><span class="s">`</span><span class="p">)</span></div></code></pre></figure>
-<p><code>QueryStructs[T any](ctx, db, query, args...) ([]T, error)</code> runs
-<code>query</code> and scans every row into <code>T</code>. <code>QueryStruct[T any](ctx, db,
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">OrderWithCustomer</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">ID</span><span class="w">       </span><span class="kt">int64</span></div><div class="cl"><span class="w">    </span><span class="nx">Total</span><span class="w">    </span><span class="kt">float64</span></div><div class="cl"><span class="w">    </span><span class="nx">Customer</span><span class="w"> </span><span class="o">*</span><span class="nx">Customer</span><span class="w"> </span><span class="c1">// populated from to_jsonb(c.*) AS customer.</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">rows</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">QueryStructs</span><span class="p">[</span><span class="nx">OrderWithCustomer</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="s">`</span></div><div class="cl"><span class="s">    SELECT o.id, o.total, to_jsonb(c.*) AS customer</span></div><div class="cl"><span class="s">    FROM orders o JOIN customers c ON c.id = o.customer_id</span><span class="s">`</span><span class="p">)</span></div></code></pre></figure>
+<p><code>(db *DB) QueryStructs[T any](ctx, query, args...) ([]T, error)</code> runs
+<code>query</code> and scans every row into <code>T</code>. <code>(db *DB) QueryStruct[T any](ctx,
 query, args...) (T, error)</code> is the single-row counterpart and reports
-<code>ErrNoRows</code> when the query yields nothing. <code>ScanStructs[T any](rows
-Rows) ([]T, error)</code> scans an already-open <code>Rows</code> value (from
+<code>ErrNoRows</code> when the query yields nothing. <code>pg.ScanStructs[T any](rows
+Rows) ([]T, error)</code> is a package-level function rather than a method,
+because <code>Rows</code> is a type alias for <code>pgx.Rows</code> and Go does not allow
+methods on a type declared in another package. It scans an
+already-open <code>Rows</code> value (from
 <code>db.Query</code>, <code>repo.Query</code>, or a transaction&rsquo;s <code>Query</code>) the same way, and
 closes it before returning.</p>
 
@@ -3264,7 +3341,12 @@ tag or snake-cased field name instead.</li>
 <li>The <code>json</code> tag&rsquo;s name, e.g. <code>json:&quot;foodId,omitempty&quot;</code> maps to
 <code>foodId</code>. A bare <code>json:&quot;-&quot;</code> skips the field entirely, following
 <code>encoding/json</code>&rsquo;s own convention; <code>json:&quot;-,&quot;</code> (with the trailing
-comma) is instead read as the literal column name <code>-</code>.</li>
+comma) is instead read as the literal column name <code>-</code>. That second
+rule is <code>LooseTable</code>&rsquo;s own: it parses the <code>json</code> tag itself with
+<code>strings.Cut</code>, so it is unaffected by the library&rsquo;s move to
+<code>encoding/json/v2</code>, which rejects <code>json:&quot;-,&quot;</code> outright as a
+malformed tag rather than treating it as the name <code>-</code> the way v1
+did. Column naming and JSON decoding are separate steps here.</li>
 <li><code>SnakeCase(field name)</code>, e.g. <code>FoodID</code> maps to <code>food_id</code>.</li>
 </ol>
 
@@ -3315,7 +3397,15 @@ syntax error.</li>
 
 <p>A non-pointer JSON-marked field is scanned through the same
 <code>jsonScanner</code> a registered table&rsquo;s JSONB column uses, which both
-decodes with <code>encoding/json</code> and tolerates a SQL <code>NULL</code> as a no-op. A
+decodes with <code>encoding/json/v2</code> and tolerates a SQL <code>NULL</code> as a no-op.
+<code>jsonScanner</code> passes <code>json.MatchCaseInsensitiveNames(true)</code>, and that
+option is load-bearing rather than cosmetic: a <code>to_jsonb(x.*)</code> or
+<code>row_to_json(...)</code> projection carries PostgreSQL&rsquo;s lower-cased column
+names as its keys, while the Go structs it decodes into carry <code>pg</code>
+tags, or no tags at all. <code>encoding/json/v2</code> matches names exactly by
+default, so without the option a <code>Name</code> field would silently stay at
+its zero value for a <code>&quot;name&quot;</code> key. With it, the behavior you see is
+the same case-insensitive matching v1 gave you for free. A
 pointer field (such as <code>Customer *Customer</code> above) takes a different,
 also pre-existing path: pgx&rsquo;s own <code>pgtype.JSONCodec</code> already decodes
 generically into any Go pointer-to-pointer destination, allocating the
@@ -3329,7 +3419,7 @@ example is the general pattern for reading a join without writing a
 custom struct-scanning function: project the &ldquo;many&rdquo; side&rsquo;s own columns
 normally, and fold the &ldquo;one&rdquo; side into a single column with
 <code>to_jsonb(alias.*)</code>.</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">adHocItem</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">ID</span><span class="w">     </span><span class="kt">int64</span></div><div class="cl"><span class="w">    </span><span class="nx">Name</span><span class="w">   </span><span class="kt">string</span></div><div class="cl"><span class="w">    </span><span class="nx">Parent</span><span class="w"> </span><span class="o">*</span><span class="nx">scanTestParent</span><span class="w"> </span><span class="c1">// decoded from to_jsonb(p.*) AS parent.</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">const</span><span class="w"> </span><span class="nx">joinQuery</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">`</span></div><div class="cl"><span class="s">    SELECT c.id, c.name, to_jsonb(p.*) AS parent, c.parent_id</span></div><div class="cl"><span class="s">    FROM child c JOIN parent p ON p.id = c.parent_id</span><span class="s">`</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">items</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">QueryStructs</span><span class="p">[</span><span class="nx">adHocItem</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">joinQuery</span><span class="p">)</span></div></code></pre></figure>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">adHocItem</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">ID</span><span class="w">     </span><span class="kt">int64</span></div><div class="cl"><span class="w">    </span><span class="nx">Name</span><span class="w">   </span><span class="kt">string</span></div><div class="cl"><span class="w">    </span><span class="nx">Parent</span><span class="w"> </span><span class="o">*</span><span class="nx">scanTestParent</span><span class="w"> </span><span class="c1">// decoded from to_jsonb(p.*) AS parent.</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">const</span><span class="w"> </span><span class="nx">joinQuery</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">`</span></div><div class="cl"><span class="s">    SELECT c.id, c.name, to_jsonb(p.*) AS parent, c.parent_id</span></div><div class="cl"><span class="s">    FROM child c JOIN parent p ON p.id = c.parent_id</span><span class="s">`</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">items</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">QueryStructs</span><span class="p">[</span><span class="nx">adHocItem</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">joinQuery</span><span class="p">)</span></div></code></pre></figure>
 <p>Three things happen at once here, all covered above: <code>c.id</code> and
 <code>c.name</code> populate <code>adHocItem.ID</code>/<code>Name</code> by ordinary column-name
 matching; <code>to_jsonb(p.*) AS parent</code> populates <code>Parent</code> through the
@@ -3347,18 +3437,21 @@ and <code>Count</code> exist on both <code>*DB</code> and <code>Repository[T]</c
 versions delegate straight through. <code>DB.Select</code> is the callback form
 (<code>func(Rows) error</code>); <code>Repository[T].Select</code>/<code>SelectSingle</code> return a
 <code>[]T</code>/<code>T</code> directly.</li>
-<li><code>QuerySlice</code>, <code>QueryTwoSlices</code>, <code>QueryMap</code> and <code>QuerySingle</code> cover
-one- and two-column result shapes without a hand-written scan loop;
-<code>QueryFunc</code> plus a <code>ScanFunc[T]</code> covers everything else that is not a
-registered struct.</li>
-<li>A registered <code>T</code> scans through <code>desc.RowsToStruct</code>/<code>RowToStruct</code> (or
-<code>ConvertRowsToStruct</code> for a single already-positioned row), matching
-columns case-insensitively via a lookup built once per query, not
-once per row.</li>
-<li><code>QueryStructs</code>, <code>QueryStruct</code> and <code>ScanStructs</code> scan into an
-unregistered, ad hoc struct via <code>desc.LooseTable</code>; <code>QueryStructs</code>/
-<code>QueryStruct</code> first check whether <code>T</code> happens to be registered in
-<code>db</code>&rsquo;s <code>Schema</code> and use that descriptor instead when it is.</li>
+<li><code>db.QuerySlice</code>, <code>db.QueryTwoSlices</code>, <code>db.QueryMap</code> and
+<code>db.QuerySingle</code> cover one- and two-column result shapes without a
+hand-written scan loop; <code>db.QueryFunc</code> plus a <code>ScanFunc[T]</code> covers
+everything else that is not a registered struct. All five are generic
+methods on <code>*DB</code>, not package-level functions.</li>
+<li>A registered <code>T</code> scans through the table descriptor&rsquo;s own
+<code>td.RowsToStruct[T]</code>/<code>td.RowToStruct[T]</code> (or the
+<code>desc.ConvertRowsToStruct</code> function for a single already-positioned
+row), matching columns case-insensitively via a lookup built once per
+query, not once per row.</li>
+<li><code>db.QueryStructs</code>, <code>db.QueryStruct</code> and the <code>pg.ScanStructs</code> function
+scan into an unregistered, ad hoc struct via <code>desc.LooseTable</code>;
+<code>QueryStructs</code>/<code>QueryStruct</code> first check whether <code>T</code> happens to be
+registered in <code>db</code>&rsquo;s <code>Schema</code> and use that descriptor instead when it
+is.</li>
 <li><code>LooseTable</code> resolves a column name from the <code>pg</code> tag&rsquo;s <code>name=</code>
 option, then the <code>json</code> tag, then <code>SnakeCase(field name)</code>; it never
 flattens embedded structs, marks every column nullable, and ignores
@@ -3366,7 +3459,10 @@ unknown result columns.</li>
 <li>A struct, map or slice field JSON-decodes automatically, except
 <code>time.Time</code>, <code>[]byte</code>, <code>sql.Scanner</code> implementors and pgx&rsquo;s own
 <code>pgtype</code> types; this is what makes <code>to_jsonb(x.*) AS field</code> scan
-straight into a struct field with no manual unmarshaling.</li>
+straight into a struct field with no manual unmarshaling. Decoding
+goes through <code>encoding/json/v2</code> with
+<code>json.MatchCaseInsensitiveNames(true)</code>, which keeps the
+case-insensitive key matching those projections depend on.</li>
 </ul>
 
 <h2 id="ch05-further-reading">Further Reading</h2>
@@ -3377,8 +3473,9 @@ the driver <code>Row</code>, <code>Rows</code>, <code>CommandTag</code> and <cod
 chapter builds on.</li>
 <li><a href="https://www.postgresql.org/docs/current/functions-json.html">PostgreSQL: JSON Functions and Operators</a>:
 <code>to_jsonb</code>, <code>row_to_json</code> and the rest of the JSON function family.</li>
-<li><a href="https://pkg.go.dev/encoding/json">Go: encoding/json</a>:
-the decoder every JSON-marked field goes through.</li>
+<li><a href="https://pkg.go.dev/encoding/json/v2">Go: encoding/json/v2</a>:
+the decoder every JSON-marked field goes through, including the
+<code>MatchCaseInsensitiveNames</code> option pg passes to it.</li>
 <li><a href="https://pkg.go.dev/database/sql#Scanner">database/sql.Scanner</a>:
 the interface <code>LooseTable</code> and the registered-table scanner both
 check for before deciding to JSON-wrap a field.</li>
@@ -3653,8 +3750,8 @@ entirely, total is reported as <code>-1</code>, and the page query still runs.</
 query as extra bind parameters (never interpolated), numbered to
 continue correctly after whatever positional parameters <code>query</code> already
 uses. Row scanning for the page query is identical to
-<code>Repository[T].Select</code>: rows convert to <code>[]T</code> via <code>desc.RowsToStruct</code>
-against the repository&rsquo;s own table descriptor.</p>
+<code>Repository[T].Select</code>: rows convert to <code>[]T</code> via <code>RowsToStruct[T]</code>
+on the repository&rsquo;s own table descriptor.</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">orderBy</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repo</span><span class="p">.</span><span class="nf">OrderBy</span><span class="p">(</span><span class="s">&#34;created_at&#34;</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span></div><div class="cl"><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">page</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">PageOptions</span><span class="p">{</span><span class="nx">Limit</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="nx">Offset</span><span class="p">:</span><span class="w"> </span><span class="mi">40</span><span class="p">,</span><span class="w"> </span><span class="nx">OrderBy</span><span class="p">:</span><span class="w"> </span><span class="nx">orderBy</span><span class="p">}</span></div><div class="cl"><span class="nx">items</span><span class="p">,</span><span class="w"> </span><span class="nx">total</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repo</span><span class="p">.</span><span class="nf">SelectPaginated</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">page</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="s">&#34;SELECT * FROM customers WHERE active&#34;</span><span class="p">)</span></div></code></pre></figure>
 <h2 id="ch06-selectwithtotal-and-the-window-column">SelectWithTotal and the Window Column</h2>
 
@@ -3664,8 +3761,8 @@ via a <code>COUNT(*) OVER()</code> window column rather than a derived subquery.
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">repo</span><span class="w"> </span><span class="o">*</span><span class="nx">Repository</span><span class="p">[</span><span class="nx">T</span><span class="p">]</span><span class="p">)</span><span class="w"> </span><span class="nf">SelectWithTotal</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">query</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="w"> </span><span class="o">...</span><span class="kt">any</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="p">[</span><span class="p">]</span><span class="nx">T</span><span class="p">,</span><span class="w"> </span><span class="kt">int64</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span></div></code></pre></figure>
 <p><code>query</code> must include the window column aliased as <code>total_count</code>:</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">query</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="s">`</span></div><div class="cl"><span class="s">    SELECT id, name, category, COUNT(*) OVER() AS total_count</span></div><div class="cl"><span class="s">    FROM items ORDER BY id</span><span class="s">`</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">items</span><span class="p">,</span><span class="w"> </span><span class="nx">total</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repo</span><span class="p">.</span><span class="nf">SelectWithTotal</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">query</span><span class="p">)</span></div></code></pre></figure>
-<p>Internally this calls <code>desc.RowsToStructWithTotal[T](repo.Table(),
-rows, &quot;total_count&quot;)</code>, which scans every other column into <code>T</code> exactly
+<p>Internally this calls <code>repo.Table().RowsToStructWithTotal[T](rows,
+&quot;total_count&quot;)</code>, which scans every other column into <code>T</code> exactly
 as <code>RowsToStruct</code> does and additionally captures the named window
 column out of band, into the returned <code>int64</code>, so <code>T</code> needs no
 artificial field for it. <code>total_count</code> is matched case-insensitively
@@ -3706,8 +3803,8 @@ appends <code>LIMIT</code>/<code>OFFSET</code> as bind parameters; a zero total
 short-circuits without running the page query.</li>
 <li><code>SelectWithTotal</code> is for a query that already carries its own
 <code>COUNT(*) OVER() AS total_count</code> window column and its own
-ordering; it captures the total out of band via
-<code>desc.RowsToStructWithTotal</code>.</li>
+ordering; it captures the total out of band via the table
+descriptor&rsquo;s <code>RowsToStructWithTotal[T]</code> method.</li>
 </ul>
 
 <h2 id="ch06-further-reading">Further Reading</h2>
@@ -3822,6 +3919,20 @@ is why <code>pg:&quot;type=uuid,primary&quot;</code> alone, with no explicit <co
 is enough to get a server-generated UUID primary key: the library
 fills in the default for you, and the zero-value-skip rule above then
 omits the column whenever the Go field is left at <code>&quot;&quot;</code>.</p>
+
+<p>The rule keys off the <em>column&rsquo;s</em> resolved type, not the field&rsquo;s Go
+type, so it fires just as well for a field typed <code>uuid.UUID</code> from the
+Go 1.27 standard library, which pg now maps to a <code>uuid</code> column with no
+<code>type=</code> option at all (see
+<a href="02-schema-and-struct-tags.md">Chapter 2</a>):</p>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">Product</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">ID</span><span class="w">   </span><span class="nx">uuid</span><span class="p">.</span><span class="nx">UUID</span><span class="w"> </span><span class="s">`</span><span class="s">pg:&#34;primary&#34;</span><span class="s">`</span><span class="w"> </span><span class="c1">// uuid column, DEFAULT gen_random_uuid()</span></div><div class="cl"><span class="w">    </span><span class="nx">Name</span><span class="w"> </span><span class="kt">string</span><span class="w">    </span><span class="s">`</span><span class="s">pg:&#34;type=varchar(255)&#34;</span><span class="s">`</span></div><div class="cl"><span class="p">}</span></div></code></pre></figure>
+<p>A <code>uuid.UUID</code> is a <code>[16]byte</code> array, and the zero-skip path that the
+UUID primary key rule uses (<code>isZero</code>, <code>desc/zeroer.go</code>) falls back to
+<code>reflect.Value.IsZero()</code> for arbitrary array types, so the all-zero
+UUID counts as zero exactly the way <code>&quot;&quot;</code> does for a string-typed one.
+Leave <code>ID</code> unset and the column is omitted from the <code>INSERT</code>, letting
+<code>gen_random_uuid()</code> fire on the server; set it and your value is bound
+as a parameter. Nothing else in this section changes.</p>
 
 <h2 id="ch07-returning-and-idptr">RETURNING and idPtr</h2>
 
@@ -3992,7 +4103,7 @@ the table&rsquo;s <code>ON CONFLICT</code> target, or the update itself needs lo
 richer than a <code>SET</code> list. <code>UpdateOrInsert</code> is the write half of that
 check-then-act pattern, built to still be correct against a writer
 racing the same check:</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="nx">UpdateOrInsert</span><span class="p">[</span><span class="nx">R</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">updateQuery</span><span class="p">,</span><span class="w"> </span><span class="nx">insertQuery</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="w"> </span><span class="p">[</span><span class="p">]</span><span class="kt">any</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">insertExtraArgs</span><span class="w"> </span><span class="o">...</span><span class="kt">any</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">R</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span></div></code></pre></figure>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="nx">UpdateOrInsert</span><span class="p">[</span><span class="nx">R</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">updateQuery</span><span class="p">,</span><span class="w"> </span><span class="nx">insertQuery</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="w"> </span><span class="p">[</span><span class="p">]</span><span class="kt">any</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">insertExtraArgs</span><span class="w"> </span><span class="o">...</span><span class="kt">any</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">R</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span></div></code></pre></figure>
 <p>It runs <code>updateQuery</code> (with <code>args</code>) via <code>db.QueryRow(...).Scan(&amp;result)</code>
 first. If that matches a row, the scanned <code>R</code> is returned immediately.
 If it reports <code>ErrNoRows</code>, <code>UpdateOrInsert</code> runs <code>insertQuery</code> instead,
@@ -4151,7 +4262,7 @@ position differs between <code>*DB</code> and <code>Repository[T]</code>.</li>
 target and action; <code>InsertOnConflict</code>/<code>InsertSingleOnConflict</code> are
 its repository-level entry points, and only the latter supports
 <code>RETURNING</code>.</li>
-<li><code>UpdateOrInsert[R]</code> runs an <code>UPDATE</code> first and falls back to an
+<li><code>db.UpdateOrInsert[R]</code> runs an <code>UPDATE</code> first and falls back to an
 <code>INSERT</code> (with its own <code>ON CONFLICT</code>) on <code>ErrNoRows</code>, for
 check-then-act writes keyed on a business identity.</li>
 <li>A full <code>Update</code> skips generated columns automatically; an explicit
@@ -4204,7 +4315,7 @@ critically, no per-row <code>DEFAULT</code>, which changes how a defaulted colum
 behaves across a batch in a way worth understanding before you reach
 for it. The second half of this chapter is the opposite direction:
 reading many rows without materializing them all in memory first, via
-<code>Repository[T].SelectIter</code> and the package-level <code>QueryIter</code>, both
+<code>Repository[T].SelectIter</code> and <code>DB.QueryIter</code>, both
 built on Go&rsquo;s <code>iter.Seq2</code> range-over-func iterators. Every signature
 and behavior here was verified against <code>desc/copy_from.go</code>,
 <code>db_copy.go</code>, <code>repository_copy.go</code> and <code>repository_iter.go</code>.</p>
@@ -4394,21 +4505,21 @@ that is not all-zero across the batch.</p>
 
 <h2 id="ch08-streaming-reads-selectiter-and-queryiter">Streaming Reads: SelectIter and QueryIter</h2>
 
-<p><code>Repository[T].SelectIter</code> and the package-level <code>QueryIter</code> are the
-read-side counterpart: a lazy, single-use iterator that decodes one
-row at a time, without ever materializing the whole result as a slice.</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">repo</span><span class="w"> </span><span class="o">*</span><span class="nx">Repository</span><span class="p">[</span><span class="nx">T</span><span class="p">]</span><span class="p">)</span><span class="w"> </span><span class="nf">SelectIter</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">query</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="w"> </span><span class="o">...</span><span class="kt">any</span><span class="p">)</span><span class="w"> </span><span class="nx">iter</span><span class="p">.</span><span class="nx">Seq2</span><span class="p">[</span><span class="nx">T</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">]</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="nx">QueryIter</span><span class="p">[</span><span class="nx">T</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">query</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="w"> </span><span class="o">...</span><span class="kt">any</span><span class="p">)</span><span class="w"> </span><span class="nx">iter</span><span class="p">.</span><span class="nx">Seq2</span><span class="p">[</span><span class="nx">T</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">]</span></div></code></pre></figure>
+<p><code>Repository[T].SelectIter</code> and <code>DB.QueryIter</code> are the read-side
+counterpart: a lazy, single-use iterator that decodes one row at a
+time, without ever materializing the whole result as a slice.</p>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">repo</span><span class="w"> </span><span class="o">*</span><span class="nx">Repository</span><span class="p">[</span><span class="nx">T</span><span class="p">]</span><span class="p">)</span><span class="w"> </span><span class="nf">SelectIter</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">query</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="w"> </span><span class="o">...</span><span class="kt">any</span><span class="p">)</span><span class="w"> </span><span class="nx">iter</span><span class="p">.</span><span class="nx">Seq2</span><span class="p">[</span><span class="nx">T</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">]</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="nx">QueryIter</span><span class="p">[</span><span class="nx">T</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span></div><div class="cl"><span class="w">    </span><span class="nx">query</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="w"> </span><span class="o">...</span><span class="kt">any</span><span class="p">)</span><span class="w"> </span><span class="nx">iter</span><span class="p">.</span><span class="nx">Seq2</span><span class="p">[</span><span class="nx">T</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">]</span></div></code></pre></figure>
 <p><code>SelectIter</code> scans each row into <code>T</code> using the same per-row struct
 scanning <code>Repository[T].Select</code> itself uses
 (<code>desc.ConvertRowsToStruct</code> against the repository&rsquo;s own cached table
-descriptor); <code>QueryIter</code> is the streaming analog of <code>QuerySlice</code>,
+descriptor); <code>db.QueryIter</code> is the streaming analog of <code>db.QuerySlice</code>,
 scanning directly into a single scannable <code>T</code> such as <code>string</code> or
 <code>int64</code>. Use either instead of the slice-returning form for exports
 and large scans where a full <code>[]T</code> would not fit comfortably in
 memory; for anything that already fits, the slice form remains simpler
 to use and costs no more.</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="k">for</span><span class="w"> </span><span class="nx">row</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">repo</span><span class="p">.</span><span class="nf">SelectIter</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;SELECT * FROM big_table&#34;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="w">    </span><span class="c1">// process row, one at a time.</span></div><div class="cl"><span class="p">}</span></div></code></pre></figure>
-<p>Result semantics are identical between the two functions. A query
+<p>Result semantics are identical between the two. A query
 error (the initial <code>Query</code> call itself failing) yields exactly one
 pair, <code>(zero T, that error)</code>, and then the iterator stops. A row-scan
 error, or a <code>rows.Err()</code> surfaced after the last row, is reported the
@@ -4420,7 +4531,7 @@ check <code>err</code> first without also checking the value. <code>QueryIter</c
 not replicate <code>QuerySlice</code>&rsquo;s &ldquo;drop every empty string&rdquo; quirk (see
 <a href="05-querying-and-scanning.md">Chapter 5</a>): it yields every row
 exactly as <code>SelectIter</code>/<code>Select</code> do, so switching an existing
-<code>QuerySlice[string]</code> call to <code>QueryIter[string]</code> can change what you
+<code>db.QuerySlice[string]</code> call to <code>db.QueryIter[string]</code> can change what you
 observe if you were relying on that quirk.</p>
 
 <h2 id="ch08-single-use-iterators-and-connection-lifetime">Single-Use Iterators and Connection Lifetime</h2>
@@ -4473,9 +4584,9 @@ query open across multiple round trips interleaved with other
 statements on the same transaction. A cursor&rsquo;s lifetime is tied to its
 transaction, so reach for it by hand, inside one, when you specifically
 need that:</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">repo</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">NewRepository</span><span class="p">[</span><span class="nx">BigRow</span><span class="p">]</span><span class="p">(</span><span class="nx">db</span><span class="p">)</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repo</span><span class="p">.</span><span class="nf">InTransaction</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">tx</span><span class="w"> </span><span class="o">*</span><span class="nx">pg</span><span class="p">.</span><span class="nx">Repository</span><span class="p">[</span><span class="nx">BigRow</span><span class="p">]</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">declare</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&#34;DECLARE export_cursor CURSOR FOR &#34;</span><span class="w"> </span><span class="o">+</span></div><div class="cl"><span class="w">        </span><span class="s">&#34;SELECT * FROM big_table&#34;</span></div><div class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nf">Exec</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">declare</span><span class="p">)</span><span class="p">;</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="nx">rows</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nf">Query</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;FETCH 1000 FROM export_cursor&#34;</span><span class="p">)</span></div><div class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">        </span><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="w">        </span><span class="c1">// RowsToStruct closes rows itself.</span></div><div class="cl"><span class="w">        </span><span class="nx">batch</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">desc</span><span class="p">.</span><span class="nx">RowsToStruct</span><span class="p">[</span><span class="nx">BigRow</span><span class="p">]</span><span class="p">(</span><span class="nx">tx</span><span class="p">.</span><span class="nf">Table</span><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w"> </span><span class="nx">rows</span><span class="p">)</span></div><div class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">        </span><span class="p">}</span></div><div class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">batch</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="c1">// exhausted.</span></div><div class="cl"><span class="w">        </span><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="w">        </span><span class="c1">// ... consume batch ...</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl"><span class="p">}</span><span class="p">)</span></div></code></pre></figure>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">repo</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">NewRepository</span><span class="p">[</span><span class="nx">BigRow</span><span class="p">]</span><span class="p">(</span><span class="nx">db</span><span class="p">)</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repo</span><span class="p">.</span><span class="nf">InTransaction</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">tx</span><span class="w"> </span><span class="o">*</span><span class="nx">pg</span><span class="p">.</span><span class="nx">Repository</span><span class="p">[</span><span class="nx">BigRow</span><span class="p">]</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">declare</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&#34;DECLARE export_cursor CURSOR FOR &#34;</span><span class="w"> </span><span class="o">+</span></div><div class="cl"><span class="w">        </span><span class="s">&#34;SELECT * FROM big_table&#34;</span></div><div class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nf">Exec</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">declare</span><span class="p">)</span><span class="p">;</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="nx">rows</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nf">Query</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;FETCH 1000 FROM export_cursor&#34;</span><span class="p">)</span></div><div class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">        </span><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="w">        </span><span class="c1">// RowsToStruct closes rows itself.</span></div><div class="cl"><span class="w">        </span><span class="nx">batch</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nf">Table</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nx">RowsToStruct</span><span class="p">[</span><span class="nx">BigRow</span><span class="p">]</span><span class="p">(</span><span class="nx">rows</span><span class="p">)</span></div><div class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">        </span><span class="p">}</span></div><div class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">batch</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="c1">// exhausted.</span></div><div class="cl"><span class="w">        </span><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="w">        </span><span class="c1">// ... consume batch ...</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl"><span class="p">}</span><span class="p">)</span></div></code></pre></figure>
 <p>Each <code>FETCH</code> round trip reuses the same underlying scanning machinery
-<code>Repository[T].Select</code> uses (<code>desc.RowsToStruct</code> against
+<code>Repository[T].Select</code> uses (<code>RowsToStruct[T]</code> on
 <code>tx.Table()</code>&rsquo;s descriptor), so a batch of rows scans exactly the same
 way it would from any other query. Reach for <code>SelectIter</code> first; reach
 for a hand-declared cursor only when you specifically need the
@@ -4548,7 +4659,7 @@ commit itself fails. It also covers a real bug this library once had
 in that last case, because the fix teaches something true about how Go
 defers and named results interact. Then it covers nesting (joining an
 outer transaction versus opening a savepoint), the generic
-<code>pg.InTransaction[R]</code> helper, concurrent access to a single
+<code>DB.InTransactionWrap[R]</code> method, concurrent access to a single
 transaction, and the retry machinery for SQLSTATE 40001 and 40P01.
 Every signature below was checked against <code>tx.go</code>, <code>db.go</code>,
 <code>retry.go</code>, <code>concurrent_tx.go</code>, <code>db_exec.go</code> and <code>repository.go</code>.</p>
@@ -4719,7 +4830,7 @@ each batches its rows into multi-row statements internally and calls
 <code>InTransaction</code> so a later batch&rsquo;s failure rolls back every earlier
 batch from the same call.</p>
 
-<h2 id="ch09-pg-intransaction-and-typed-wrappers">pg.InTransaction and Typed Wrappers</h2>
+<h2 id="ch09-db-intransactionwrap-and-typed-wrappers">DB.InTransactionWrap and Typed Wrappers</h2>
 
 <p>A real application usually has more than one <code>Repository[T]</code>, and code
 often groups several of them into a small struct so a service layer
@@ -4729,14 +4840,25 @@ can depend on one thing instead of five:</p>
 means hand-writing the same three lines every such wrapper needs:
 open a transaction on the underlying <code>*DB</code>, reconstruct the wrapper
 type around that transactional <code>*DB</code>, and call the caller&rsquo;s function
-with it. <code>pg.InTransaction[R]</code> is exactly that boilerplate, generalized
-once:</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="nx">InTransaction</span><span class="p">[</span><span class="nx">R</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span></div><div class="cl"><span class="w">    </span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">,</span><span class="w"> </span><span class="nx">wrap</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="nx">R</span><span class="p">,</span><span class="w"> </span><span class="nx">fn</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">R</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="p">,</span></div><div class="cl"><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nf">InTransaction</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">tx</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nf">fn</span><span class="p">(</span><span class="nf">wrap</span><span class="p">(</span><span class="nx">tx</span><span class="p">)</span><span class="p">)</span><span class="w"> </span><span class="p">}</span><span class="p">)</span></div><div class="cl"><span class="p">}</span></div></code></pre></figure>
+with it. <code>DB.InTransactionWrap[R]</code> is exactly that boilerplate,
+generalized once:</p>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">db</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="nx">InTransactionWrap</span><span class="p">[</span><span class="nx">R</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="p">(</span></div><div class="cl"><span class="w">    </span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">wrap</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="nx">R</span><span class="p">,</span><span class="w"> </span><span class="nx">fn</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">R</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="p">,</span></div><div class="cl"><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nf">InTransaction</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">tx</span><span class="w"> </span><span class="o">*</span><span class="nx">DB</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nf">fn</span><span class="p">(</span><span class="nf">wrap</span><span class="p">(</span><span class="nx">tx</span><span class="p">)</span><span class="p">)</span><span class="w"> </span><span class="p">}</span><span class="p">)</span></div><div class="cl"><span class="p">}</span></div></code></pre></figure>
+<p><strong>The two <code>InTransaction</code> names on <code>*DB</code> are different things.</strong>
+<code>db.InTransaction(ctx, fn func(*DB) error)</code> is the plain closure form
+covered earlier in this chapter. <code>db.InTransactionWrap(ctx, wrap, fn)</code>
+is this one: it takes a constructor and calls <code>fn</code> with the
+constructed <code>R</code>, never with the <code>*DB</code>. The second name exists because
+a method name must be unique per receiver type, so the generic form
+could not also be called <code>InTransaction</code>; in earlier releases of pg it
+was the package-level function <code>pg.InTransaction[R](ctx, db, wrap,
+fn)</code>, and moving it onto <code>*DB</code> (Go 1.27 allows a method to declare its
+own type parameters) forced the rename.</p>
+
 <p>Using it, <code>Repositories</code> needs one line instead of a hand-written
 method:</p>
-<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">r</span><span class="w"> </span><span class="o">*</span><span class="nx">Repositories</span><span class="p">)</span><span class="w"> </span><span class="nf">InTransaction</span><span class="p">(</span></div><div class="cl"><span class="w">    </span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">fn</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="o">*</span><span class="nx">Repositories</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="p">,</span></div><div class="cl"><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nf">InTransaction</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">Customers</span><span class="p">.</span><span class="nf">DB</span><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w"> </span><span class="nx">NewRepositories</span><span class="p">,</span><span class="w"> </span><span class="nx">fn</span><span class="p">)</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="c1">// Usage:</span></div><div class="cl"><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repos</span><span class="p">.</span><span class="nf">InTransaction</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">tx</span><span class="w"> </span><span class="o">*</span><span class="nx">Repositories</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nx">Customers</span><span class="p">.</span><span class="nf">Insert</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">customer</span><span class="p">)</span><span class="p">;</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nx">Orders</span><span class="p">.</span><span class="nf">Insert</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">)</span></div><div class="cl"><span class="p">}</span><span class="p">)</span></div></code></pre></figure>
+<figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">r</span><span class="w"> </span><span class="o">*</span><span class="nx">Repositories</span><span class="p">)</span><span class="w"> </span><span class="nf">InTransaction</span><span class="p">(</span></div><div class="cl"><span class="w">    </span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">fn</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="o">*</span><span class="nx">Repositories</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="p">,</span></div><div class="cl"><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">Customers</span><span class="p">.</span><span class="nf">DB</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nf">InTransactionWrap</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">NewRepositories</span><span class="p">,</span><span class="w"> </span><span class="nx">fn</span><span class="p">)</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="c1">// Usage:</span></div><div class="cl"><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repos</span><span class="p">.</span><span class="nf">InTransaction</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">tx</span><span class="w"> </span><span class="o">*</span><span class="nx">Repositories</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nx">Customers</span><span class="p">.</span><span class="nf">Insert</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">customer</span><span class="p">)</span><span class="p">;</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nx">Orders</span><span class="p">.</span><span class="nf">Insert</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">)</span></div><div class="cl"><span class="p">}</span><span class="p">)</span></div></code></pre></figure>
 <p><code>wrap</code> is typically the wrapper&rsquo;s own constructor, exactly as
-<code>NewRepositories</code> is above: <code>pg.InTransaction</code> calls <code>db.InTransaction</code>
+<code>NewRepositories</code> is above: <code>InTransactionWrap</code> calls <code>db.InTransaction</code>
 once, calls <code>wrap(tx)</code> to rebuild <code>*Repositories</code> (or whatever <code>R</code> is)
 around the now-transactional <code>*DB</code>, then calls <code>fn</code> with that rebuilt
 value. If <code>db</code> is already inside a transaction, the nesting rule from
@@ -4991,10 +5113,12 @@ joins the existing transaction (no savepoint); calling <code>Begin</code> on
 one opens a real, independently committable/rollback-able
 savepoint-backed subtransaction via pgx&rsquo;s nested <code>Tx.Begin</code>.</li>
 <li><code>Repository[T].InTransaction</code> mirrors <code>DB.InTransaction</code> at the
-typed level; <code>pg.InTransaction[R]</code> generalizes the &ldquo;open a
+typed level; <code>DB.InTransactionWrap[R]</code> generalizes the &ldquo;open a
 transaction, rebuild my typed wrapper around it&rdquo; pattern so a
 multi-repository aggregate needs one line instead of a hand-written
-method.</li>
+method. It is named <code>InTransactionWrap</code>, not <code>InTransaction</code>,
+because <code>DB.InTransaction</code> already exists with a different
+signature.</li>
 <li><code>BeginConcurrent</code>/<code>ConcurrentTx</code> make a transaction safe to touch
 from several goroutines by serializing every call through a mutex.
 Safe, not parallel: PostgreSQL connections process one statement at
@@ -5897,9 +6021,18 @@ it&rdquo;), unsuitable for anything that must never lose a message.</p>
 
 <ul>
 <li><code>string</code> or <code>[]byte</code>: sent as-is, unmodified, as the raw payload.</li>
-<li>anything else: marshaled with <code>encoding/json</code> first, then sent as
+<li>anything else: marshaled with <code>encoding/json/v2</code> first, then sent as
 the JSON text.</li>
 </ul>
+
+<p>One consequence of the move from <code>encoding/json</code> to
+<code>encoding/json/v2</code> is worth knowing if something other than Go reads
+the channel: v2 does not HTML-escape <code>&lt;</code>, <code>&gt;</code> and <code>&amp;</code>, so a payload
+containing those characters now carries them literally instead of as
+the six-character <code>\u</code>-escapes v1 emitted for them. Round-tripping
+through pg is unaffected, since both spellings decode to the same
+string; only a consumer inspecting the raw payload bytes, or diffing
+them against a stored expectation, would notice.</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nf">Notify</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;chat_db&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;hello&#34;</span><span class="p">)</span><span class="w"> </span><span class="c1">// sent as-is.</span></div><div class="cl">&#8203;</div><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">Sender</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="s">`</span><span class="s">json:&#34;sender&#34;</span><span class="s">`</span></div><div class="cl"><span class="w">    </span><span class="nx">Body</span><span class="w">   </span><span class="kt">string</span><span class="w"> </span><span class="s">`</span><span class="s">json:&#34;body&#34;</span><span class="s">`</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nf">Notify</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;chat_json&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="p">{</span><span class="nx">Sender</span><span class="p">:</span><span class="w"> </span><span class="s">&#34;kataras&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">Body</span><span class="p">:</span><span class="w"> </span><span class="s">&#34;hi&#34;</span><span class="p">}</span><span class="p">)</span></div><div class="cl"><span class="c1">// sent as: {&#34;sender&#34;:&#34;kataras&#34;,&#34;body&#34;:&#34;hi&#34;}</span></div></code></pre></figure>
 <p><code>Notify</code> always runs on <code>db.Pool</code> directly (not through <code>db.tx</code>, even
 if <code>db</code> is transactional), since a notification sent from inside a
@@ -5962,7 +6095,17 @@ so a listen loop should return on it instead of logging it as an
 error:</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="k">for</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">notification</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nf">Accept</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span></div><div class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">errors</span><span class="p">.</span><span class="nf">Is</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">ErrListenerClosed</span><span class="p">)</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="c1">// somebody called Close; nothing went wrong.</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;accept: %w&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span></div><div class="cl"><span class="w">    </span><span class="p">}</span></div><div class="cl"><span class="w">    </span><span class="c1">// ...</span></div><div class="cl"><span class="p">}</span></div></code></pre></figure>
 <p><code>UnmarshalNotification</code> is the counterpart to <code>Notify</code>&rsquo;s JSON-encoding
-branch: it JSON-decodes <code>n.Payload</code> into <code>T</code> and returns it.</p>
+branch: it JSON-decodes <code>n.Payload</code> into <code>T</code> and returns it. It stays
+a package-level function rather than becoming a method the way most of
+the library&rsquo;s generic helpers have, because <code>Notification</code> is a type
+alias for <code>pgconn.Notification</code> and Go does not allow methods on a
+type declared in another package. It decodes with <code>encoding/json/v2</code>,
+passing <code>json.MatchCaseInsensitiveNames(true)</code> so that a payload
+produced by a row-to-JSON trigger, whose keys are PostgreSQL&rsquo;s
+lower-cased column names, still lands in <code>T</code>&rsquo;s fields when <code>T</code> is one
+of your entities carrying <code>pg</code> tags rather than <code>json</code> ones. v2
+matches names exactly by default; the option restores the behavior v1
+gave you unconditionally.</p>
 <figure class="code" data-lang="go"><figcaption>go</figcaption><pre class="chroma"><code><div class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">Sender</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="s">`</span><span class="s">json:&#34;sender&#34;</span><span class="s">`</span></div><div class="cl"><span class="w">    </span><span class="nx">Body</span><span class="w">   </span><span class="kt">string</span><span class="w"> </span><span class="s">`</span><span class="s">json:&#34;body&#34;</span><span class="s">`</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">notification</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nf">Accept</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span></div><div class="cl"><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">payload</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pg</span><span class="p">.</span><span class="nx">UnmarshalNotification</span><span class="p">[</span><span class="nx">Message</span><span class="p">]</span><span class="p">(</span><span class="nx">notification</span><span class="p">)</span></div><div class="cl"><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span></div><div class="cl"><span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span></div><div class="cl"><span class="p">}</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">Sender</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span></div></code></pre></figure>
 <p>Nothing enforces that a payload was actually produced by <code>Notify</code>&rsquo;s
 JSON branch. <code>UnmarshalNotification</code> against a plain string payload
@@ -6052,7 +6195,11 @@ for <code>INSERT</code> and <code>UPDATE</code> and is the zero value of <code>T
 <code>DB.ListenTable</code>&rsquo;s callback receives directly: <code>New</code>/<code>Old</code> stay as raw
 <code>json.RawMessage</code> since the low-level API has no registered Go type to
 decode them into, leaving that decision to the caller (or, for a
-typed table, to <code>Repository[T].ListenTable</code> below).
+typed table, to <code>Repository[T].ListenTable</code> below). That is still
+<code>encoding/json</code>&rsquo;s <code>RawMessage</code>, not the v2-era
+<code>jsontext.Value</code>, so code holding a <code>TableNotificationJSON</code> keeps
+compiling unchanged; <code>encoding/json/v2</code> handles <code>RawMessage</code> as raw
+JSON natively.
 <code>(TableNotification[T]).GetPayload() string</code> returns the notification&rsquo;s
 raw, undecoded text, useful for debugging a decode failure.</p>
 
@@ -7633,7 +7780,7 @@ declared <code>unique</code> or <code>unique_index</code> in the struct tag.</p>
 chapter, run against a real PostgreSQL service container rather than
 any form of mock. Its GitHub Actions workflow starts a
 <code>postgres:16-alpine</code> service alongside the test job:</p>
-<figure class="code" data-lang="yaml"><figcaption>yaml</figcaption><pre class="chroma"><code><div class="cl"><span class="nt">services</span><span class="p">:</span></div><div class="cl"><span class="w">  </span><span class="nt">postgres</span><span class="p">:</span></div><div class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">postgres:16-alpine</span></div><div class="cl"><span class="w">    </span><span class="nt">env</span><span class="p">:</span></div><div class="cl"><span class="w">      </span><span class="nt">POSTGRES_USER</span><span class="p">:</span><span class="w"> </span><span class="l">postgres</span></div><div class="cl"><span class="w">      </span><span class="nt">POSTGRES_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l">admin!123</span></div><div class="cl"><span class="w">      </span><span class="nt">POSTGRES_DB</span><span class="p">:</span><span class="w"> </span><span class="l">test_db</span></div><div class="cl"><span class="w">    </span><span class="nt">ports</span><span class="p">:</span></div><div class="cl"><span class="w">      </span><span>- </span><span class="m">5432</span><span class="p">:</span><span class="m">5432</span></div><div class="cl"><span class="w">    </span><span class="nt">options</span><span class="p">:</span><span class="w"> </span><span class="p">&gt;-</span></div><div class="cl"><span class="sd">      --health-cmd pg_isready</span></div><div class="cl"><span class="sd">      --health-interval 10s</span></div><div class="cl"><span class="sd">      --health-timeout 5s</span></div><div class="cl"><span class="sd">      --health-retries 5</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nt">steps</span><span class="p">:</span></div><div class="cl"><span class="w">  </span><span>- </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v6</span></div><div class="cl"><span class="w">    </span><span class="nt">with</span><span class="p">:</span></div><div class="cl"><span class="w">      </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="m">1.26</span><span class="l">.x</span></div><div class="cl"><span class="w">  </span><span>- </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v6</span></div><div class="cl"><span class="w">  </span><span>- </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">go test -v ./...</span></div></code></pre></figure>
+<figure class="code" data-lang="yaml"><figcaption>yaml</figcaption><pre class="chroma"><code><div class="cl"><span class="nt">services</span><span class="p">:</span></div><div class="cl"><span class="w">  </span><span class="nt">postgres</span><span class="p">:</span></div><div class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">postgres:16-alpine</span></div><div class="cl"><span class="w">    </span><span class="nt">env</span><span class="p">:</span></div><div class="cl"><span class="w">      </span><span class="nt">POSTGRES_USER</span><span class="p">:</span><span class="w"> </span><span class="l">postgres</span></div><div class="cl"><span class="w">      </span><span class="nt">POSTGRES_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l">admin!123</span></div><div class="cl"><span class="w">      </span><span class="nt">POSTGRES_DB</span><span class="p">:</span><span class="w"> </span><span class="l">test_db</span></div><div class="cl"><span class="w">    </span><span class="nt">ports</span><span class="p">:</span></div><div class="cl"><span class="w">      </span><span>- </span><span class="m">5432</span><span class="p">:</span><span class="m">5432</span></div><div class="cl"><span class="w">    </span><span class="nt">options</span><span class="p">:</span><span class="w"> </span><span class="p">&gt;-</span></div><div class="cl"><span class="sd">      --health-cmd pg_isready</span></div><div class="cl"><span class="sd">      --health-interval 10s</span></div><div class="cl"><span class="sd">      --health-timeout 5s</span></div><div class="cl"><span class="sd">      --health-retries 5</span></div><div class="cl">&#8203;</div><div class="cl"><span class="nt">steps</span><span class="p">:</span></div><div class="cl"><span class="w">  </span><span>- </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v7</span></div><div class="cl"><span class="w">    </span><span class="nt">with</span><span class="p">:</span></div><div class="cl"><span class="w">      </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="m">1.27</span><span class="l">.x</span></div><div class="cl"><span class="w">  </span><span>- </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v7</span></div><div class="cl"><span class="w">  </span><span>- </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">go test -v ./...</span></div></code></pre></figure>
 <p>The service container&rsquo;s health check (<code>pg_isready</code>, polled every 10
 seconds up to 5 times) ensures the job&rsquo;s <code>go test</code> step never starts
 racing a database that has not finished starting up. The library&rsquo;s own

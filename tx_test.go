@@ -49,7 +49,7 @@ func TestInTransactionGeneric(t *testing.T) {
 			Name:          "Rollback",
 		}
 
-		err := InTransaction(ctx, db, newTxCustomerRepo, func(txRepo *txCustomerRepo) error {
+		err := db.InTransactionWrap(ctx, newTxCustomerRepo, func(txRepo *txCustomerRepo) error {
 			if err := txRepo.InsertSingle(ctx, customer, &customer.ID); err != nil {
 				return err
 			}
@@ -76,7 +76,7 @@ func TestInTransactionGeneric(t *testing.T) {
 			Name:          "Commit",
 		}
 
-		err := InTransaction(ctx, db, newTxCustomerRepo, func(txRepo *txCustomerRepo) error {
+		err := db.InTransactionWrap(ctx, newTxCustomerRepo, func(txRepo *txCustomerRepo) error {
 			return txRepo.InsertSingle(ctx, customer, &customer.ID)
 		})
 		if err != nil {
@@ -100,7 +100,7 @@ func TestInTransactionGeneric(t *testing.T) {
 		}
 
 		err := db.InTransaction(ctx, func(tx *DB) error {
-			return InTransaction(ctx, tx, newTxCustomerRepo, func(txRepo *txCustomerRepo) error {
+			return tx.InTransactionWrap(ctx, newTxCustomerRepo, func(txRepo *txCustomerRepo) error {
 				if txRepo.DB() != tx {
 					t.Fatal("expected the nested InTransaction to reuse the same transactional *DB, got a different one")
 				}

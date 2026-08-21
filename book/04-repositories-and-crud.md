@@ -31,6 +31,8 @@ of `repository.go`, `db_repository.go` and `db_crud.go`.
 
 ```go
 func NewRepository[T any](db *DB) *Repository[T]
+
+func (db *DB) NewRepository[T any]() *Repository[T] // the method form
 ```
 
 `NewRepository[T]` looks up `T`'s table definition in `db`'s `Schema`
@@ -46,6 +48,11 @@ first time a handler runs:
 customers := pg.NewRepository[Customer](db) // panics if Customer
                                              // was never registered
 ```
+
+`db.NewRepository[Customer]()` is the same thing spelled as a method,
+for call sites that read better with the database first; it calls the
+function above and behaves identically. This book uses the function
+form throughout.
 
 `repo.DB()` returns the underlying `*DB`, and `repo.Table()` returns
 the cached `*desc.Table` (read-only; do not mutate it). `repo.IsReadOnly()`
@@ -292,8 +299,8 @@ err := db.Select(ctx, func(rows pg.Rows) error {
 ```
 
 For the common "scan a single column into a slice" or "scan one ad
-hoc row" shapes, the package-level generic helpers `QuerySlice[T]`,
-`QueryMap[K, V]` and `QueryFunc[T]` (in `common.go`) usually read
+hoc row" shapes, the generic `*DB` methods `db.QuerySlice[T]`,
+`db.QueryMap[K, V]` and `db.QueryFunc[T]` (in `common.go`) usually read
 better than a hand-written `DB.Select` callback; they are covered in
 [Chapter 5](05-querying-and-scanning.md).
 

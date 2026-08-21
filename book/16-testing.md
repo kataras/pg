@@ -403,10 +403,10 @@ services:
       --health-retries 5
 
 steps:
-  - uses: actions/setup-go@v6
+  - uses: actions/setup-go@v7
     with:
-      go-version: 1.26.x
-  - uses: actions/checkout@v6
+      go-version: 1.27.x
+  - uses: actions/checkout@v7
   - run: go test -v ./...
 ```
 

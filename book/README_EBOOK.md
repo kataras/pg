@@ -8,7 +8,7 @@ browser. No pandoc, no LaTeX.
 
 ## Requirements
 
-- Go 1.26+
+- Go 1.27+
 - Google Chrome or Microsoft Edge (any Chromium browser; override the
   autodetection with the `PG_BOOK_BROWSER` environment variable). Only
   needed for `-format pdf`, `-format cover` and `-format brand`; HTML

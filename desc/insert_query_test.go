@@ -34,7 +34,7 @@ type goldenAccount struct {
 func goldenAccountTable(t *testing.T) *Table {
 	t.Helper()
 
-	td, err := ConvertStructToTable("golden_accounts", reflect.TypeOf(goldenAccount{}))
+	td, err := ConvertStructToTable("golden_accounts", reflect.TypeFor[goldenAccount]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestBuildInsertQueryGolden(t *testing.T) {
 		type noTagAccount struct {
 			Email string `pg:"type=varchar(255)"`
 		}
-		ntTd, err := ConvertStructToTable("golden_no_tag_accounts", reflect.TypeOf(noTagAccount{}))
+		ntTd, err := ConvertStructToTable("golden_no_tag_accounts", reflect.TypeFor[noTagAccount]())
 		if err != nil {
 			t.Fatalf("ConvertStructToTable: %v", err)
 		}
@@ -230,7 +230,7 @@ func TestBuildInsertQueryGolden(t *testing.T) {
 			ID    string `pg:"type=uuid,primary"`
 			Email string `pg:"type=varchar(255),unique,conflict=DO NOTHING"`
 		}
-		pkTd, err := ConvertStructToTable("golden_do_nothing_pk_accounts", reflect.TypeOf(doNothingWithPKAccount{}))
+		pkTd, err := ConvertStructToTable("golden_do_nothing_pk_accounts", reflect.TypeFor[doNothingWithPKAccount]())
 		if err != nil {
 			t.Fatalf("ConvertStructToTable: %v", err)
 		}
@@ -262,7 +262,7 @@ func TestBuildInsertQueryForceOnConflictExprUnknownIndexError(t *testing.T) {
 	type noIndexAccount struct {
 		Email string `pg:"type=varchar(255)"`
 	}
-	td, err := ConvertStructToTable("golden_no_index_accounts", reflect.TypeOf(noIndexAccount{}))
+	td, err := ConvertStructToTable("golden_no_index_accounts", reflect.TypeFor[noIndexAccount]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}
@@ -293,7 +293,7 @@ type goldenDoNothingAccount struct {
 func goldenDoNothingAccountTable(t *testing.T) *Table {
 	t.Helper()
 
-	td, err := ConvertStructToTable("golden_do_nothing_accounts", reflect.TypeOf(goldenDoNothingAccount{}))
+	td, err := ConvertStructToTable("golden_do_nothing_accounts", reflect.TypeFor[goldenDoNothingAccount]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}
@@ -435,7 +435,7 @@ type passwordAlgAccount struct {
 // value into the query, when the table has a password column and no PasswordHandler, and that
 // it still succeeds once PasswordAlg is restored to an allowlisted value.
 func TestBuildInsertQueryRejectsInvalidPasswordAlg(t *testing.T) {
-	td, err := ConvertStructToTable("password_alg_accounts", reflect.TypeOf(passwordAlgAccount{}))
+	td, err := ConvertStructToTable("password_alg_accounts", reflect.TypeFor[passwordAlgAccount]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}
@@ -460,7 +460,7 @@ func TestBuildInsertQueryRejectsInvalidPasswordAlg(t *testing.T) {
 // TestBuildBulkInsertQueryRejectsInvalidPasswordAlg is TestBuildInsertQueryRejectsInvalidPasswordAlg's
 // counterpart for the multi-row bulk-insert builder.
 func TestBuildBulkInsertQueryRejectsInvalidPasswordAlg(t *testing.T) {
-	td, err := ConvertStructToTable("password_alg_bulk_accounts", reflect.TypeOf(passwordAlgAccount{}))
+	td, err := ConvertStructToTable("password_alg_bulk_accounts", reflect.TypeFor[passwordAlgAccount]())
 	if err != nil {
 		t.Fatalf("ConvertStructToTable: %v", err)
 	}
@@ -512,7 +512,7 @@ func TestNumInsertableColumnsBatchCapArithmetic(t *testing.T) {
 	const numColumns = 200 // 200 * 500 = 100000 > 65535.
 
 	columns := make([]*Column, 0, numColumns)
-	for i := 0; i < numColumns; i++ {
+	for i := range numColumns {
 		columns = append(columns, &Column{Name: fmt.Sprintf("col_%d", i)})
 	}
 	td := &Table{Columns: columns}

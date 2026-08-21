@@ -46,9 +46,7 @@ func Example() {
 			context.Background(),
 			[]string{"cognito_user_id"},
 			Customer{
-				BaseEntity: BaseEntity{
-					ID: customerToInsert.ID,
-				},
+				ID:            customerToInsert.ID,
 				CognitoUserID: newCognitoUserID,
 			})
 		// Full update of the object by id (except id and created_at, updated_at columns):
@@ -72,9 +70,7 @@ func Example() {
 			context.Background(),
 			[]string{"username"},
 			Customer{
-				BaseEntity: BaseEntity{
-					ID: customerToInsert.ID,
-				},
+				ID:       customerToInsert.ID,
 				Username: "",
 			})
 		if err != nil {
@@ -212,9 +208,8 @@ func Example() {
 		newBlogPost.ID,
 	).Scan(&otherFeatures)
 	// OR
-	// otherFeatures, err := QuerySingle[Features](
+	// otherFeatures, err := db.QuerySingle[Features](
 	// 	context.Background(),
-	// 	db,
 	// 	`SELECT other_features FROM blog_posts WHERE id = $1 LIMIT 1;`,
 	// 	newBlogPost.ID,
 	// )

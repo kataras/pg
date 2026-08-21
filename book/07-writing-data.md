@@ -115,6 +115,27 @@ is enough to get a server-generated UUID primary key: the library
 fills in the default for you, and the zero-value-skip rule above then
 omits the column whenever the Go field is left at `""`.
 
+The rule keys off the *column's* resolved type, not the field's Go
+type, so it fires just as well for a field typed `uuid.UUID` from the
+Go 1.27 standard library, which pg now maps to a `uuid` column with no
+`type=` option at all (see
+[Chapter 2](02-schema-and-struct-tags.md)):
+
+```go
+type Product struct {
+    ID   uuid.UUID `pg:"primary"` // uuid column, DEFAULT gen_random_uuid()
+    Name string    `pg:"type=varchar(255)"`
+}
+```
+
+A `uuid.UUID` is a `[16]byte` array, and the zero-skip path that the
+UUID primary key rule uses (`isZero`, `desc/zeroer.go`) falls back to
+`reflect.Value.IsZero()` for arbitrary array types, so the all-zero
+UUID counts as zero exactly the way `""` does for a string-typed one.
+Leave `ID` unset and the column is omitted from the `INSERT`, letting
+`gen_random_uuid()` fire on the server; set it and your value is bound
+as a parameter. Nothing else in this section changes.
+
 ## RETURNING and idPtr
 
 Every single-row insert path accepts an `idPtr` parameter. When it is
@@ -337,7 +358,7 @@ check-then-act pattern, built to still be correct against a writer
 racing the same check:
 
 ```go
-func UpdateOrInsert[R any](ctx context.Context, db *DB,
+func (db *DB) UpdateOrInsert[R any](ctx context.Context,
     updateQuery, insertQuery string, args []any,
     insertExtraArgs ...any) (R, error)
 ```
@@ -534,7 +555,7 @@ under `ErrCopyPassword`.
   target and action; `InsertOnConflict`/`InsertSingleOnConflict` are
   its repository-level entry points, and only the latter supports
   `RETURNING`.
-- `UpdateOrInsert[R]` runs an `UPDATE` first and falls back to an
+- `db.UpdateOrInsert[R]` runs an `UPDATE` first and falls back to an
   `INSERT` (with its own `ON CONFLICT`) on `ErrNoRows`, for
   check-then-act writes keyed on a business identity.
 - A full `Update` skips generated columns automatically; an explicit

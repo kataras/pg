@@ -130,7 +130,7 @@ func TestQueryMap(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		result, err := QueryMap[string, int](ctx, db, fmt.Sprintf("SELECT k, v FROM %s ORDER BY ord", table))
+		result, err := db.QueryMap[string, int](ctx, fmt.Sprintf("SELECT k, v FROM %s ORDER BY ord", table))
 		if err != nil {
 			t.Fatalf("QueryMap: %v", err)
 		}
@@ -147,7 +147,7 @@ func TestQueryMap(t *testing.T) {
 	})
 
 	t.Run("no rows returns an empty non-nil map", func(t *testing.T) {
-		result, err := QueryMap[string, int](ctx, db, fmt.Sprintf("SELECT k, v FROM %s WHERE k = 'does-not-exist'", table))
+		result, err := db.QueryMap[string, int](ctx, fmt.Sprintf("SELECT k, v FROM %s WHERE k = 'does-not-exist'", table))
 		if err != nil {
 			t.Fatalf("QueryMap: %v", err)
 		}
@@ -197,7 +197,7 @@ func TestQueryFunc(t *testing.T) {
 		return nc, err
 	}
 
-	results, err := QueryFunc(ctx, db, scan, fmt.Sprintf(
+	results, err := db.QueryFunc(ctx, scan, fmt.Sprintf(
 		"SELECT name, COUNT(*) FROM %s GROUP BY name ORDER BY name", table))
 	if err != nil {
 		t.Fatalf("QueryFunc: %v", err)
