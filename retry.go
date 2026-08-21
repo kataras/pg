@@ -121,7 +121,23 @@ func backoffDelay(opts RetryOptions, attempt int) time.Duration {
 // waitBackoff blocks for backoffDelay(opts, attempt), or returns ctx.Err() promptly if ctx
 // is done first.
 func waitBackoff(ctx context.Context, opts RetryOptions, attempt int) error {
-	delay := backoffDelay(opts, attempt)
+	return waitDelay(ctx, backoffDelay(opts, attempt))
+}
+
+// waitDelay blocks for delay, or returns ctx.Err() promptly if ctx is done first.
+//
+// It is split out of waitBackoff so that the wait itself can be tested with a delay the test
+// chooses. backoffDelay draws full jitter from [0, bound), so a test that goes through
+// waitBackoff cannot know how long the wait it is trying to interrupt will actually be.
+//
+// The context is checked up front, before the delay is consulted and regardless of it. A zero
+// delay is a routine draw from that range rather than a rare one, and returning nil for it
+// would let retryLoop begin another attempt against a context the caller has already canceled.
+func waitDelay(ctx context.Context, delay time.Duration) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	if delay <= 0 {
 		return nil
 	}

@@ -156,32 +156,33 @@ func TestRetryLoopSucceedsAfterRetry(t *testing.T) {
 }
 
 // TestRetryLoopCtxCanceledMidBackoff verifies that a context canceled while retryLoop is
-// waiting out a backoff makes it return promptly (well before the attempts it didn't get to
-// run would otherwise have exhausted MaxAttempts) with an error that, via errors.Is, still
-// exposes both ctx.Err() and the last attempt's error (errors.Join).
+// between attempts makes it stop there, rather than working through the attempts it had left,
+// and that the error it returns still exposes both ctx.Err() and the last attempt's error
+// (errors.Join) through errors.Is.
+//
+// The cancellation comes from inside the attempt, not from a goroutine racing a wall clock.
+// backoffDelay applies full jitter, drawing uniformly from [0, BaseDelay), so an earlier
+// version of this test that canceled after a fixed 20ms with a 200ms BaseDelay was really
+// asserting that a random draw landed above 20ms, and it failed about one run in ten.
 func TestRetryLoopCtxCanceledMidBackoff(t *testing.T) {
 	opts := normalizeRetryOptions(RetryOptions{
 		MaxAttempts: 5,
-		// Long enough that, uncanceled, this test would take at least 200ms+400ms+...; the
-		// cancellation below fires quickly, so a "prompt return" assertion of well under
-		// that is a meaningful signal that retryLoop actually stopped waiting rather than
-		// happening to finish its backoff before we checked.
+		// Long enough that running the remaining attempts would be obvious in the elapsed
+		// time below: uncanceled, this would take at least 200ms+400ms+800ms+1s.
 		BaseDelay: 200 * time.Millisecond,
 		MaxDelay:  time.Second,
 	})
 
 	stubErr := errors.New("still failing")
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	var calls int32
-	go func() {
-		time.Sleep(20 * time.Millisecond) // let the first attempt run and start backing off.
-		cancel()
-	}()
+	var calls int
 
 	start := time.Now()
 	err := retryLoop(ctx, opts, func(error) bool { return true }, func(attempt int) error {
 		calls++
+		cancel() // the backoff that follows this attempt is the one that must not be waited out.
 		return stubErr
 	})
 	elapsed := time.Since(start)
@@ -190,13 +191,56 @@ func TestRetryLoopCtxCanceledMidBackoff(t *testing.T) {
 		t.Fatalf("expected retryLoop to return promptly after ctx cancellation, took %v", elapsed)
 	}
 	if calls != 1 {
-		t.Fatalf("expected exactly 1 attempt before cancellation interrupted the backoff wait, got %d", calls)
+		t.Fatalf("expected exactly 1 attempt before cancellation stopped the loop, got %d", calls)
 	}
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected the returned error to wrap context.Canceled, got: %v", err)
 	}
 	if !errors.Is(err, stubErr) {
 		t.Fatalf("expected the returned error to also wrap the last attempt's error, got: %v", err)
+	}
+}
+
+// TestWaitDelayCanceledDuringWait covers the branch TestRetryLoopCtxCanceledMidBackoff cannot
+// reach now that it cancels before the wait begins: a context that is still live when waitDelay
+// enters its select and is canceled while it is parked there. The delay is fixed and long, and
+// the cancellation is prompt, so the outcome does not depend on a jitter draw.
+func TestWaitDelayCanceledDuringWait(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		time.Sleep(5 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err := waitDelay(ctx, time.Hour)
+	elapsed := time.Since(start)
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got: %v", err)
+	}
+	if elapsed > time.Second {
+		t.Fatalf("expected waitDelay to return as soon as ctx was canceled, took %v", elapsed)
+	}
+}
+
+// TestWaitDelayZeroDelayHonorsCanceledContext pins the reason waitDelay checks the context
+// before it looks at the delay. Full jitter draws from [0, bound), so a zero delay is a normal
+// outcome; without the check, retryLoop would take that as "backoff complete" and run another
+// attempt against a context the caller had already canceled.
+func TestWaitDelayZeroDelayHonorsCanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := waitDelay(ctx, 0); !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled for a zero delay on a canceled context, got: %v", err)
+	}
+
+	// An uncanceled context with no delay to serve still returns immediately with no error.
+	if err := waitDelay(context.Background(), 0); err != nil {
+		t.Fatalf("expected nil for a zero delay on a live context, got: %v", err)
 	}
 }
 

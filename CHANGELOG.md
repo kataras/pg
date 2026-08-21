@@ -95,6 +95,13 @@ non-local types.
   reads both forms now and takes an offset-free timestamp as UTC. That is what pgx does when it
   scans the same column into a `time.Time`, so a row read through a repository and the same row
   arriving over LISTEN agree.
+- **A retry no longer starts another attempt after the context is canceled.** The wait between
+  attempts returned "backoff over, carry on" for a zero delay without consulting the context
+  first. Full jitter draws uniformly from `[0, bound)`, so a zero delay is a routine outcome and
+  not a rare one, which made this reachable in ordinary use rather than only in theory. The wait
+  checks the context before it looks at the delay now, so `InTransactionRetry` stops where the
+  caller asked it to. The test covering this was itself asserting that a random draw landed above
+  a fixed 20ms and failed roughly one run in ten; it is deterministic now.
 - `gen`'s `getCallerPackageName` sliced the full symbol name with an index computed against a
   substring of it, so it returned a truncated package path. It now cuts at the last dot after the
   final slash, via `strings.CutLast`. (The function is currently unreferenced.)
