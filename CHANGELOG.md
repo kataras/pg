@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [1.0.14] - 2026-08-21
+## [1.0.15] - 2026-08-21
 
 Migration to Go 1.27. **The `go` directive is now `go 1.27`**, which is a hard floor on the whole
 build graph: a module that consumes this one must declare `go 1.27` or later itself. The pgx
