@@ -9,3 +9,10 @@ book.test
 .vscode
 .DS_Store
 .claude/*
+# AI
+.agents
+.codex
+AGENTS.md
+CLAUDE.md
+.plexon
+PLEXON.md

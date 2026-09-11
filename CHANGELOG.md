@@ -6,7 +6,8 @@ All notable changes to this project are documented here.
 
 Migration to Go 1.27. **The `go` directive is now `go 1.27`**, which is a hard floor on the whole
 build graph: a module that consumes this one must declare `go 1.27` or later itself. The pgx
-dependency also moves to v5.10.0, which carries an upstream SQL injection fix.
+dependency also moves to v5.11.0; the v5.9.2 step inside that range carries an upstream SQL
+injection fix.
 
 ### Breaking
 
@@ -73,17 +74,41 @@ non-local types.
 - Applied the Go 1.27 `go fix` modernizers across the library: `reflect.TypeFor[T]()`,
   `slices.Contains`, `strings.SplitSeq`, `errors.AsType[E]` and `range n` loops.
 - `_benchmarks` no longer depends on `github.com/google/uuid`; it uses the standard library.
-- **`github.com/jackc/pgx/v5` moved from v5.8.0 to v5.10.0.** No source change was needed: every
+- **`github.com/jackc/pgx/v5` moved from v5.8.0 to v5.11.0.** No source change was needed: every
   pgx symbol this library uses kept its signature, `pgx.Identifier.Sanitize` (the single escaping
-  path behind `QuoteIdentifier`) is byte-for-byte unchanged, and the only export pgx dropped is
-  `pgconn.PgConn.SecretKey`, which this library never called. The bump matters because v5.9.2
-  fixes GHSA-j88v-2chj-qfwx, a SQL injection through placeholder confusion inside dollar-quoted
-  string literals; it is reachable only under `pgx.QueryExecModeSimpleProtocol`, which this
-  library never selects, so only a caller that opts into the simple protocol was ever exposed.
-  v5.9.0 and v5.10.0 also bound the binary decoders against a malicious or compromised server,
-  add `require_auth` and `ConnStringAllowedKeys` to the connection string, and add PostgreSQL
-  protocol 3.2 and SCRAM-SHA-256-PLUS support. pgx now requires Go 1.25 or later, which the
-  `go 1.27` directive already exceeds, and it pulls in no new dependencies.
+  path behind `QuoteIdentifier`) is byte-for-byte unchanged across all four releases, and the
+  only export pgx dropped is `pgconn.PgConn.SecretKey`, which this library never called. The
+  bump matters because v5.9.2 fixes GHSA-j88v-2chj-qfwx, a SQL injection through placeholder
+  confusion inside dollar-quoted string literals; it is reachable only under
+  `pgx.QueryExecModeSimpleProtocol`, which this library never selects, so only a caller that
+  opts into the simple protocol was ever exposed. v5.9.0 and v5.10.0 also bound the binary
+  decoders against a malicious or compromised server, add `require_auth` and
+  `ConnStringAllowedKeys` to the connection string, and add PostgreSQL protocol 3.2 and
+  SCRAM-SHA-256-PLUS support. pgx now requires Go 1.25 or later, which the `go 1.27` directive
+  already exceeds, and it pulls in no new dependencies.
+
+  v5.11.0 adds a `TypeMap` method to the `pgx.Rows` interface. That only affects a program
+  that implements `pgx.Rows` itself, such as a test mock or a wrapper; this library aliases the
+  type as `pg.Rows` and never implements it, so nothing here had to change. Three pgx behavior
+  changes are worth knowing about as a caller. The connection string parsers now follow libpq
+  exactly: in a keyword/value string a backslash escapes the character after it, so a Windows
+  path such as `sslrootcert=C:\certs\root.crt` must be written with doubled backslashes
+  (quoting the value does not help, since libpq treats a backslash as an escape inside quotes
+  too), and a password containing a backslash needs the same treatment. In a
+  URL, malformed percent-encoding is a parse error instead of being passed through. The `date`,
+  `timestamp` and `timestamptz` codecs got a hand-written text parser: an impossible date such
+  as `2024-02-30` is rejected instead of rolling over into March, and a `timestamptz` text
+  value now scans into `time.Local` (or the configured `ScanLocation`), which is what the binary
+  format always did. The two date/time changes reach only a caller who opted into the simple
+  protocol; the default extended protocol scans binary. The full live suite passes against a
+  PostgreSQL 16 server on v5.11.0 with no test changed.
+- **`golang.org/x/mod` moved from v0.33.0 to v0.41.0.** `gen` uses only `modfile.ModulePath`,
+  whose signature is unchanged. The indirect `golang.org/x/sync` and `golang.org/x/text` moved to
+  v0.23.0 and v0.42.0.
+- **The `book` module's dependencies were refreshed.** The renderer, `gomarkdown/markdown`, is
+  at its 2026-09-07 snapshot, with `regexp2` v2.8.0, `go-json-experiment/json` and `x/sys`
+  v0.48.0 following as indirects. The rebuilt HTML differs from the previous build only in the
+  build month on the colophon; the PDF was regenerated from it.
 
 ### Fixed
 
