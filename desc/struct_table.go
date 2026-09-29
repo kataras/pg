@@ -189,8 +189,12 @@ func convertStructFieldToColumnDefinion(tableName string, field reflect.StructFi
 			switch opt {
 			case "index":
 				value = Btree.String()
-			case "unique_index":
-				// keep the value as it is.
+			case "name", "type", "default", "check", "generated", "conflict",
+				"ref", "reference", "references", "unique_index":
+				// These options only mean something with a value, so a bare one is the
+				// column-name shorthand like any other bare word: `pg:"name,unique"` is
+				// name=name,unique, not a column called "true".
+				key, value = "name", opt
 			default:
 				value = "true"
 			}

@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here.
 
+## [1.0.16] - 2026-09-29
+
+### Fixed
+
+- **`pg:"name"` and `pg:"name,unique"` name a column `name`, not `true`.** A bare option that is
+  not a boolean flag is documented as the column-name shorthand (`pg:"id"` is `name=id`), but the
+  parser gave every bare option the value `"true"` before looking at its key, so a bare `name` set
+  the column name to `true`. The `Product` model in `_examples/README.md` and six structs in
+  `kataras/umls` hit it. Bare `type`, `default`, `check`, `generated`, `conflict`, `ref`,
+  `reference`, `references` and `unique_index` now follow the same rule and name the column
+  instead of producing an invalid type, `DEFAULT true`, `CHECK (true)` and similar.
+
+  A database whose schema was already created from such a tag keeps its column called `true`:
+  `CreateSchema` does not rename columns, and `CheckSchema` now fails with `column "true" in
+  table ... not found in schema`. Rename it by hand (`ALTER TABLE t RENAME COLUMN "true" TO
+  name`).
+
 ## [1.0.15] - 2026-08-21
 
 Migration to Go 1.27. **The `go` directive is now `go 1.27`**, which is a hard floor on the whole
