@@ -2,15 +2,20 @@ package pg
 
 import (
 	"context"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/kataras/pg/desc"
 )
 
-// This should match the CI's postgres major version (see .github/workflows/ci.yml).
-const expectedDBVersion = "16"
+// minDBMajorVersion is the oldest PostgreSQL major version the README supports.
+const minDBMajorVersion = 16
 
+// TestInformation_GetVersion checks the server's major version. CI sets PG_EXPECTED_MAJOR to the
+// matrix version (see .github/workflows/ci.yml) and the test requires an exact match; anywhere
+// else it only requires minDBMajorVersion or newer.
 func TestInformation_GetVersion(t *testing.T) {
 	db, err := openEmptyTestConnection()
 	if err != nil {
@@ -24,8 +29,19 @@ func TestInformation_GetVersion(t *testing.T) {
 	}
 
 	major, _, _ := strings.Cut(version, ".")
-	if major != expectedDBVersion {
-		t.Fatalf("expected major version: %s but got: %s (full: %s)", expectedDBVersion, major, version)
+	if want := os.Getenv("PG_EXPECTED_MAJOR"); want != "" {
+		if major != want {
+			t.Fatalf("expected major version: %s but got: %s (full: %s)", want, major, version)
+		}
+		return
+	}
+
+	n, err := strconv.Atoi(major)
+	if err != nil {
+		t.Fatalf("unparsable major version %q (full: %s): %v", major, version, err)
+	}
+	if n < minDBMajorVersion {
+		t.Fatalf("expected major version %d or newer but got: %d (full: %s)", minDBMajorVersion, n, version)
 	}
 }
 

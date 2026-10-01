@@ -53,6 +53,9 @@ jobs:
       run: go vet ./...
 
     - name: Test
+      env:
+        # TestInformation_GetVersion requires the server to report this major version.
+        PG_EXPECTED_MAJOR: ${{ matrix.postgres_version }}
       run: go test -race -count=1 ./...
 
   # golangci-lint-action@v9 runs on Node 24. Anything up to v8 runs on Node 20, which GitHub has
