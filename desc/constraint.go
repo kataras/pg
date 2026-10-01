@@ -38,6 +38,12 @@ var textToConstraintType = map[string]ConstraintType{
 	"c": CheckConstraintType,
 	"f": ForeignKeyConstraintType,
 	"i": IndexConstraintType,
+	// PostgreSQL 18 records NOT NULL as a pg_constraint row with contype 'n'. Nullability is
+	// read from information_schema.columns, not from here, so a NOT NULL row carries no
+	// constraint this package models. It maps to NoneConstraintType, which Build,
+	// BuildColumn and String all treat as a no-op, instead of failing the whole scan.
+	// DB.ListConstraints filters these rows out already; this entry covers other queries.
+	"n": NoneConstraintType,
 }
 
 // Scan implements the sql.Scanner interface.

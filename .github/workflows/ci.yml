@@ -16,12 +16,17 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      # Let one PostgreSQL version finish when the other fails, so a failure shows which one.
+      fail-fast: false
       matrix:
         go_version: [1.27.x]
+        # 18 is the first release that stores NOT NULL as pg_constraint rows (contype 'n'),
+        # which DB.ListConstraints has to skip. 16 stays as the README's stated floor.
+        postgres_version: [16, 18]
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:${{ matrix.postgres_version }}-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: admin!123

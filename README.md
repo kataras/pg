@@ -4,7 +4,7 @@
 
 <img align="left" width="80" height="80" src="book/output/brand/pg-mark-256.png" alt="pg">
 
-A Go library for PostgreSQL (16.x). You declare entities as structs with `pg` tags, register them in a schema, and perform CRUD operations through a repository pattern. It also handles database connections, schema creation and verification, and query generation and execution, so you write concise, readable code against PostgreSQL.
+A Go library for PostgreSQL (16 and 18 are tested in CI). You declare entities as structs with `pg` tags, register them in a schema, and perform CRUD operations through a repository pattern. It also handles database connections, schema creation and verification, and query generation and execution, so you write concise, readable code against PostgreSQL.
 
 <br/>
 

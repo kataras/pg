@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## [1.0.17] - 2026-10-01
+
+### Fixed
+
+- **`CheckSchema` works on PostgreSQL 18.** PostgreSQL 18 records every NOT NULL column as a
+  `pg_constraint` row with `contype = 'n'`. `ListConstraints` read those rows, and
+  `desc.ConstraintType.Scan` did not know `'n'`, so `CheckSchema` (and `ListColumns`,
+  `ListTables`, `ListConstraints`) failed with `constraint type: unknown value of: "n"` on any
+  table with a NOT NULL column. `ListConstraints` now skips NOT NULL rows, since nullability
+  already comes from `information_schema.columns`. `ConstraintType.Scan` also accepts `'n'` and
+  maps it to `NoneConstraintType`, which `Build`, `BuildColumn` and `String` treat as a no-op,
+  so a caller scanning `pg_constraint.contype` with its own query gets the same tolerance. CI
+  now runs the live suite against PostgreSQL 16 and 18.
+
 ## [1.0.16] - 2026-09-29
 
 ### Fixed

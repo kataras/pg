@@ -637,7 +637,10 @@ func (db *DB) ListColumns(ctx context.Context, tableNames ...string) ([]*desc.Co
 	return columns, nil
 }
 
-// ListConstraints returns a list of constraint definitions in the database schema by querying the pg_constraint table and.
+// ListConstraints returns a list of constraint definitions in the database schema by querying
+// the pg_constraint table and the pg_indexes view. NOT NULL constraints, which PostgreSQL 18
+// and later record in pg_constraint, are not listed: nullability is reported by
+// ListColumnsInformationSchema instead.
 func (db *DB) ListConstraints(ctx context.Context, tableNames ...string) ([]*desc.Constraint, error) {
 	if tableNames == nil {
 		tableNames = make([]string, 0)
@@ -687,7 +690,10 @@ LEFT JOIN
     pg_catalog.pg_am am ON am.oid = i.relam
 WHERE
     n.nspname = $1 AND
-    ( CARDINALITY($2::varchar[]) = 0 OR cl.relname = ANY($2::varchar[]) )
+    ( CARDINALITY($2::varchar[]) = 0 OR cl.relname = ANY($2::varchar[]) ) AND
+    -- PostgreSQL 18 stores NOT NULL as pg_constraint rows (contype 'n'). Nullability
+    -- comes from information_schema.columns (see ListColumnsInformationSchema), so skip them.
+    con.contype <> 'n'
 
 UNION ALL
 

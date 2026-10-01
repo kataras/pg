@@ -313,3 +313,70 @@ func TestConstraintStringNilSubStruct(t *testing.T) {
 		})
 	}
 }
+
+// TestConstraintTypeScan covers every contype and constraint_type text ConstraintType.Scan
+// accepts, including PostgreSQL 18's 'n' (NOT NULL), which used to fail the whole
+// DB.CheckSchema with "constraint type: unknown value of" before it was mapped.
+func TestConstraintTypeScan(t *testing.T) {
+	tests := []struct {
+		src  any
+		want ConstraintType
+	}{
+		{"p", PrimaryKeyConstraintType},
+		{"u", UniqueConstraintType},
+		{"c", CheckConstraintType},
+		{"f", ForeignKeyConstraintType},
+		{"i", IndexConstraintType},
+		{"n", NoneConstraintType},
+		{[]byte("n"), NoneConstraintType},
+		{"PRIMARY KEY", PrimaryKeyConstraintType},
+		{"UNIQUE", UniqueConstraintType},
+		{"CHECK", CheckConstraintType},
+		{"FOREIGN KEY", ForeignKeyConstraintType},
+		{"INDEX", IndexConstraintType},
+	}
+
+	for _, tt := range tests {
+		got := ConstraintType(255) // a sentinel, so a Scan that writes nothing is caught.
+		if err := got.Scan(tt.src); err != nil {
+			t.Fatalf("Scan(%#v): unexpected error: %v", tt.src, err)
+		}
+		if got != tt.want {
+			t.Fatalf("Scan(%#v) = %d, want %d", tt.src, got, tt.want)
+		}
+	}
+
+	var unknown ConstraintType
+	if err := unknown.Scan("z"); err == nil {
+		t.Fatal(`Scan("z"): expected an error for an unknown contype`)
+	}
+	if err := unknown.Scan(42); err == nil {
+		t.Fatal("Scan(42): expected an error for an unsupported source type")
+	}
+}
+
+// TestNotNullConstraintIsNoOp checks that a NOT NULL row (contype 'n', PostgreSQL 18) scanned
+// into a Constraint leaves the column untouched: nullability comes from
+// information_schema.columns, and a NOT NULL row must not flip any other attribute.
+func TestNotNullConstraintIsNoOp(t *testing.T) {
+	var c Constraint
+	c.TableName = "widgets"
+	c.ColumnName = "name"
+	c.ConstraintName = "widgets_name_not_null"
+	if err := c.ConstraintType.Scan("n"); err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	c.Build("NOT NULL name")
+
+	column := Column{Name: "name", Nullable: false}
+	before := column
+	if err := c.BuildColumn(&column); err != nil {
+		t.Fatalf("BuildColumn: %v", err)
+	}
+	if !reflect.DeepEqual(column, before) {
+		t.Fatalf("BuildColumn changed the column: before %+v, after %+v", before, column)
+	}
+	if s := c.String(); s != "" {
+		t.Fatalf("String() = %q, want empty for a NOT NULL row", s)
+	}
+}
